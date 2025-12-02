@@ -1,0 +1,88 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "triggerTimes": {
+                    "item": [
+                        {
+                            "mode": "everyDay",
+                            "hour": 9
+                        }
+                    ]
+                }
+            },
+            "name": "Cron",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "text": "Daily update!"
+            },
+            "name": "Buffer",
+            "type": "n8n-nodes-base.buffer",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "text": "Daily update!"
+            },
+            "name": "Twitter",
+            "type": "n8n-nodes-base.twitter",
+            "typeVersion": 1,
+            "position": [
+                500,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "text": "Daily update!"
+            },
+            "name": "LinkedIn",
+            "type": "n8n-nodes-base.linkedin",
+            "typeVersion": 1,
+            "position": [
+                500,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Cron": {
+            "main": [
+                [
+                    {
+                        "node": "Buffer",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Buffer": {
+            "main": [
+                [
+                    {
+                        "node": "Twitter",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "LinkedIn",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
