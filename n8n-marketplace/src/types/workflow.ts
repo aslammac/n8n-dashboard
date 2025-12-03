@@ -34,17 +34,29 @@ export interface WorkflowAuthor {
 
 export interface WorkflowMetadata {
   id: string;
-  name: string;
-  description: string;
+  title: string;
+  slug: string;
+  shortDescription: string;
+  detailedDescription: string;
   category: string;
   tags: string[];
   author: WorkflowAuthor;
   downloads: number;
+  views: number;
   rating: number;
   created: string;
   updated: string;
   nodes: string[]; // List of node types used
   nodeCount: number;
   complexity: 'beginner' | 'intermediate' | 'advanced';
-  workflow: N8nWorkflowData;
+  workflow?: N8nWorkflowData;
+}
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { WorkflowMetadata } from '@/types/workflow';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, ChevronDown, Check } from 'lucide-react';
 
 interface FilterState {
   category: string;
@@ -15,36 +15,85 @@ interface FilterPanelProps {
   className?: string;
 }
 
+const CATEGORIES = [
+  "AI & ML",
+  "Marketing",
+  "Sales",
+  "Data Processing",
+  "Productivity",
+  "Integration",
+  "Communication",
+  "E-commerce",
+  "Finance",
+  "HR",
+  "Other"
+];
+
 export default function FilterPanel({ workflows, filters, onFilterChange, className = '' }: FilterPanelProps) {
-  const categories = Array.from(new Set(workflows.map(w => w.category))).sort();
-  
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCategorySelect = (category: string) => {
+    onFilterChange({ ...filters, category: category === filters.category ? '' : category });
+    setIsCategoryOpen(false);
+  };
+
   return (
     <div className={`flex flex-wrap items-center gap-4 ${className}`}>
-      {/* Category Dropdown/Pills */}
-      <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-2 md:pb-0 mask-linear-fade">
+      
+      {/* Category Dropdown */}
+      <div className="relative" ref={dropdownRef}>
         <button
-          onClick={() => onFilterChange({ ...filters, category: '' })}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap border ${
-            filters.category === '' 
+          onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border ${
+            filters.category 
               ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-900/20' 
-              : 'bg-[#1c1c21] border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-200'
+              : 'bg-[#1c1c21] border-gray-800 text-gray-300 hover:border-gray-700 hover:text-white'
           }`}
         >
-          All
+          <span>{filters.category || 'All Categories'}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCategoryOpen ? 'rotate-180' : ''}`} />
         </button>
-        {categories.map(category => (
-          <button
-            key={category}
-            onClick={() => onFilterChange({ ...filters, category: category === filters.category ? '' : category })}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap border ${
-              filters.category === category 
-                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-900/20' 
-                : 'bg-[#1c1c21] border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-200'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
+
+        {isCategoryOpen && (
+          <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c1c21] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div className="max-h-80 overflow-y-auto py-1 custom-scrollbar">
+              <button
+                onClick={() => handleCategorySelect('')}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${
+                  filters.category === '' ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <span>All Categories</span>
+                {filters.category === '' && <Check className="w-4 h-4" />}
+              </button>
+              
+              {CATEGORIES.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => handleCategorySelect(category)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${
+                    filters.category === category ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <span>{category}</span>
+                  {filters.category === category && <Check className="w-4 h-4" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Divider */}

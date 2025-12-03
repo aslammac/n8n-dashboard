@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { WorkflowMetadata } from '@/types/workflow';
 import { getNodeIcon } from '@/utils/nodeIcons';
-import { ArrowRight, Download, Eye, BadgeCheck } from 'lucide-react';
+import { ArrowRight, Download, Eye, BadgeCheck, Star } from 'lucide-react';
 
 interface WorkflowCardProps {
   workflow: WorkflowMetadata;
@@ -18,7 +18,7 @@ export default function WorkflowCard({ workflow }: WorkflowCardProps) {
   const isVerified = (workflow as any).verified || Math.random() > 0.7;
 
   return (
-    <Link href={`/workflow/${workflow.id}`} className="block h-full group perspective-1000">
+    <Link href={`/workflow/${workflow.slug}`} className="block h-full group perspective-1000">
       <div className="bg-[#1c1c21] hover:bg-[#25252b] border border-gray-800 hover:border-blue-500/50 rounded-xl p-6 transition-all duration-300 h-full flex flex-col relative overflow-hidden transform-gpu group-hover:scale-[1.02] group-hover:-translate-y-1 shadow-lg hover:shadow-2xl hover:shadow-blue-900/20">
         
         {/* Node Icons Header */}
@@ -55,11 +55,11 @@ export default function WorkflowCard({ workflow }: WorkflowCardProps) {
           </div>
 
           <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors line-clamp-1">
-            {workflow.name}
+            {workflow.title}
           </h3>
           
           <p className="text-gray-400 text-sm leading-relaxed line-clamp-3 mb-4">
-            {workflow.description}
+            {workflow.shortDescription}
           </p>
         </div>
 
@@ -67,12 +67,12 @@ export default function WorkflowCard({ workflow }: WorkflowCardProps) {
         <div className="mt-auto pt-4 border-t border-gray-800 flex items-center justify-between text-sm text-gray-500">
           <div className="flex items-center space-x-4">
              <span className="flex items-center space-x-1">
-                <Eye className="w-4 h-4" />
-                <span>{Math.floor(Math.random() * 1000) + 100}</span>
+                <Star className="w-4 h-4" />
+                <span>{workflow.rating}</span>
              </span>
              <span className="flex items-center space-x-1">
-                <Download className="w-4 h-4" />
-                <span>{Math.floor(Math.random() * 500) + 10}</span>
+                <Eye className="w-4 h-4" />
+                <span>{workflow.views}</span>
              </span>
           </div>
           <div className="flex items-center text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium transform translate-x-2 group-hover:translate-x-0 duration-300">

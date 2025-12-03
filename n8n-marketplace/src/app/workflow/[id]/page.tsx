@@ -3,38 +3,63 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, Calendar, User, Tag, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, User, Tag, Share2, LogIn, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { WorkflowMetadata } from '@/types/workflow';
 import WorkflowPreview from '@/components/WorkflowPreview';
-import workflowsData from '@/data/workflows.json';
+import api from '@/lib/api';
+
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function WorkflowPage() {
   const params = useParams();
-  const [workflow, setWorkflow] = useState<WorkflowMetadata | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated, logout } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (params.id) {
-      // Simulate fetch
-      const found = (workflowsData as any[]).find(w => w.id === params.id);
-      setWorkflow(found || null);
-      setLoading(false);
-    }
-  }, [params.id]);
+  const { data: apiData, error, isLoading } = useSWR(
+    params.id ? `/workflows/${params.id}` : null,
+    fetcher
+  );
 
-  const handleDownload = () => {
+  const workflow: WorkflowMetadata | null = apiData ? {
+    id: apiData._id,
+    title: apiData.title,
+    slug: apiData.slug,
+    shortDescription: apiData.shortDescription,
+    detailedDescription: apiData.detailedDescription,
+    category: apiData.category,
+    tags: apiData.tags,
+    author: { name: 'Unknown' }, // Backend doesn't populate author name yet
+    downloads: apiData.downloadsCount || 0,
+    views: apiData.viewsCount || 0,
+    rating: 0,
+    created: apiData.createdAt,
+    updated: apiData.updatedAt,
+    nodes: apiData.nodes || [],
+    nodeCount: apiData.nodes?.length || 0,
+    complexity: apiData.complexity || 'intermediate',
+    workflow: apiData.workflowJson,
+  } : null;
+
+  const handleDownload = async () => {
     if (!workflow) return;
-    const jsonString = JSON.stringify(workflow.workflow, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${workflow.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const response = await api.post(`/downloads/${workflow.id}`);
+      const jsonString = JSON.stringify(response.data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${workflow.title.replace(/\s+/g, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again.');
+    }
   };
 
   const handleCopy = () => {
@@ -45,7 +70,7 @@ export default function WorkflowPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0f0f11] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -68,7 +93,7 @@ export default function WorkflowPage() {
     <div className="min-h-screen bg-[#0f0f11] text-gray-100 font-sans pb-12">
       {/* Header */}
       <header className="bg-[#151519] border-b border-gray-800 sticky top-0 z-20">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link 
             href="/"
             className="inline-flex items-center text-sm text-gray-400 hover:text-white transition-colors"
@@ -76,6 +101,41 @@ export default function WorkflowPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Marketplace
           </Link>
+
+          <div className="flex items-center space-x-4">
+            {isAuthenticated ? (
+              <>
+                <Link 
+                  href="/upload"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
+                >
+                  <span className="hidden sm:inline">Upload</span>
+                </Link>
+                
+                <div className="flex items-center space-x-3 border-l border-gray-700 pl-4">
+                  <div className="flex flex-col items-end hidden sm:flex">
+                    <span className="text-sm font-medium text-white">{user?.firstName}</span>
+                    <span className="text-xs text-gray-400 capitalize">{user?.subscriptionTier}</span>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 bg-[#1c1c21] hover:bg-[#25252b] text-white text-sm font-medium rounded-lg border border-gray-700 transition-colors flex items-center"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -96,11 +156,11 @@ export default function WorkflowPage() {
               </div>
               
               <h1 className="text-3xl font-bold text-white mb-4 leading-tight">
-                {workflow.name}
+                {workflow.title}
               </h1>
               
               <p className="text-gray-400 leading-relaxed text-sm">
-                {workflow.description}
+                {workflow.shortDescription}
               </p>
             </div>
 
@@ -140,7 +200,7 @@ export default function WorkflowPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Downloads</span>
                 <span className="font-medium text-white">
-                  {Math.floor(Math.random() * 2000) + 100}
+                  {workflow.downloads}
                 </span>
               </div>
             </div>
@@ -153,7 +213,7 @@ export default function WorkflowPage() {
                     key={tag}
                     className="px-2.5 py-1 bg-[#1c1c21] border border-gray-800 rounded-lg text-xs text-gray-400"
                   >
-                    #{tag}
+                    {tag}
                   </span>
                 ))}
               </div>
@@ -164,7 +224,7 @@ export default function WorkflowPage() {
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-[#1c1c21] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
               <div className="h-[600px] bg-[#0f0f11] relative">
-                <WorkflowPreview workflow={workflow.workflow} />
+                <WorkflowPreview workflow={workflow.workflow || { nodes: [], connections: {} }} />
                 <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-white/10">
                   Interactive Preview
                 </div>

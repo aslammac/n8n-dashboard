@@ -1,68 +1,74 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { WorkflowMetadata } from '@/types/workflow';
 import WorkflowGrid from '@/components/WorkflowGrid';
 import SearchBar from '@/components/SearchBar';
 import FilterPanel from '@/components/FilterPanel';
 import { searchWorkflows } from '@/utils/searchEngine';
-import workflowsData from '@/data/workflows.json';
+import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { LogIn, LogOut, User } from 'lucide-react';
+
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function Home() {
-  const [workflows, setWorkflows] = useState<WorkflowMetadata[]>([]);
-  const [filteredWorkflows, setFilteredWorkflows] = useState<WorkflowMetadata[]>([]);
+  const { user, isAuthenticated, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     category: '',
     complexity: '',
     nodeTypes: [] as string[]
   });
-  const [loading, setLoading] = useState(true);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
 
+  // Construct query string for SWR key
+  const queryString = new URLSearchParams({
+    page: currentPage.toString(),
+    limit: '9',
+    ...(searchQuery && { search: searchQuery }),
+    ...(filters.category && { category: filters.category }),
+    ...(filters.complexity && { complexity: filters.complexity }),
+    ...(filters.nodeTypes.length > 0 && { tags: filters.nodeTypes.join(',') }),
+  }).toString();
+
+  const { data, error, isLoading } = useSWR(`/workflows?${queryString}`, fetcher);
+
+  const workflows = data?.data ? data.data.map((w: any) => ({
+    id: w._id,
+    title: w.title,
+    slug: w.slug,
+    shortDescription: w.shortDescription,
+    detailedDescription: w.detailedDescription,
+    category: w.category,
+    tags: w.tags,
+    author: w.creatorId ? { name: w.creatorId.fullName || w.creatorId.username, avatar: w.creatorId.avatarUrl } : { name: 'Unknown' },
+    downloads: w.downloadsCount || 0,
+    views: w.viewsCount || 0,
+    rating: w.ratingAverage || 0,
+    created: w.createdAt,
+    updated: w.updatedAt,
+    nodes: w.nodes || [],
+    nodeCount: w.nodes?.length || 0,
+    complexity: w.complexity || 'intermediate',
+  })) : [];
+
+  const totalPages = data?.meta?.totalPages || 1;
+  const totalItems = data?.meta?.total || 0;
+
+  // Reset page when filters change
   useEffect(() => {
-    // Simulate fetching data
-    const timer = setTimeout(() => {
-      setWorkflows(workflowsData as any); // Type assertion needed due to JSON import
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
 
-  useEffect(() => {
-    let results = workflows;
-
-    // Apply search
-    if (searchQuery) {
-      results = searchWorkflows(searchQuery, results);
-    }
-
-    // Apply filters
-    if (filters.category) {
-      results = results.filter(w => w.category === filters.category);
-    }
-    if (filters.complexity) {
-      results = results.filter(w => w.complexity === filters.complexity);
-    }
-    if (filters.nodeTypes && filters.nodeTypes.length > 0) {
-      results = results.filter(w => 
-        filters.nodeTypes!.every(node => w.nodes.includes(node))
-      );
-    }
-
-    setFilteredWorkflows(results);
-    setCurrentPage(1); // Reset to first page on filter change
-  }, [workflows, searchQuery, filters]);
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredWorkflows.length / itemsPerPage);
-  const currentWorkflows = filteredWorkflows.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Reset page when filters change
+  // useEffect(() => {
+  //   setCurrentPage(1);
+  // }, [searchQuery, filters]);
 
   return (
     <div className="min-h-screen bg-[#0f0f11] font-sans text-gray-100">
@@ -78,8 +84,43 @@ export default function Home() {
                 Marketplace
               </h1>
             </div>
-            <div className="w-full md:w-96">
-              <SearchBar onSearch={setSearchQuery} />
+            <div className="w-full md:w-auto flex items-center space-x-4">
+              <div className="hidden md:block w-96">
+                <SearchBar onSearch={setSearchQuery} />
+              </div>
+              
+              {isAuthenticated ? (
+                <>
+                  <Link 
+                    href="/upload"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
+                  >
+                    <span className="hidden sm:inline">Upload</span>
+                  </Link>
+                  
+                  <div className="flex items-center space-x-3 border-l border-gray-700 pl-4">
+                    <div className="flex flex-col items-end hidden sm:flex">
+                      <span className="text-sm font-medium text-white">{user?.firstName}</span>
+                      <span className="text-xs text-gray-400 capitalize">{user?.subscriptionTier}</span>
+                    </div>
+                    <button
+                      onClick={logout}
+                      className="p-2 text-gray-400 hover:text-white transition-colors"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="px-4 py-2 bg-[#1c1c21] hover:bg-[#25252b] text-white text-sm font-medium rounded-lg border border-gray-700 transition-colors flex items-center"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -98,18 +139,18 @@ export default function Home() {
         {/* Results Info */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-sm font-medium text-gray-400">
-            Showing <span className="text-white">{filteredWorkflows.length}</span> workflows
+            Showing <span className="text-white">{workflows.length}</span> of <span className="text-white">{totalItems}</span> workflows
           </p>
         </div>
         
         {/* Grid */}
-        <WorkflowGrid workflows={currentWorkflows} loading={loading} />
+        <WorkflowGrid workflows={workflows} loading={isLoading} />
 
         {/* Pagination Controls */}
-        {!loading && totalPages > 1 && (
+        {!isLoading && totalPages > 1 && (
           <div className="mt-12 flex justify-center items-center space-x-2">
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#1c1c21] border border-gray-700 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -133,7 +174,7 @@ export default function Home() {
             </div>
 
             <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#1c1c21] border border-gray-700 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >

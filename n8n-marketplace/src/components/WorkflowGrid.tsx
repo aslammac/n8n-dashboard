@@ -31,7 +31,7 @@ export default function WorkflowGrid({ workflows, loading }: WorkflowGridProps) 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {workflows.map((workflow) => (
-        <WorkflowCard key={workflow.id} workflow={workflow} />
+        <WorkflowCard key={workflow.slug} workflow={workflow} />
       ))}
     </div>
   );
