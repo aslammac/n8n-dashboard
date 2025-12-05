@@ -2,11 +2,13 @@ import { Controller, Post, Param, UseGuards, Request, Ip, Headers, Get } from '@
 import { DownloadsService } from './downloads.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
+
 @Controller('downloads')
 export class DownloadsController {
   constructor(private readonly downloadsService: DownloadsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Post(':workflowId')
   async download(
     @Param('workflowId') workflowId: string,
@@ -17,7 +19,7 @@ export class DownloadsController {
     return this.downloadsService.trackDownload(req.user.userId, workflowId, ip, userAgent);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Get('my')
   async getMyDownloads(@Request() req: any) {
     return this.downloadsService.getUserDownloads(req.user.userId);

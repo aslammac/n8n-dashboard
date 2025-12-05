@@ -10,6 +10,12 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { DownloadsModule } from './downloads/downloads.module';
+import { MailModule } from './mail/mail.module';
+import mailConfig from './config/mail.config';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { BullModule } from '@nestjs/bullmq';
+import redisConfig from './config/redis.config';
+import { NotificationsModule } from './notifications/notifications.module';
 
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -20,7 +26,17 @@ import { APP_GUARD } from '@nestjs/core';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, appConfig],
+      load: [databaseConfig, jwtConfig, appConfig, mailConfig, redisConfig],
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('redis.host'),
+          port: configService.get('redis.port'),
+        },
+      }),
+      inject: [ConfigService],
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -43,6 +59,9 @@ import { APP_GUARD } from '@nestjs/core';
     DownloadsModule,
     SubscriptionsModule,
     PaymentsModule,
+    MailModule,
+    AnalyticsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

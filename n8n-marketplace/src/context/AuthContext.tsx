@@ -12,14 +12,15 @@ interface User {
   lastName: string;
   picture?: string;
   subscriptionTier: string;
+  emailVerified: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (token: string, refreshToken: string) => void;
+  login: (token: string, refreshToken: string, redirectPath?: string | null) => void;
   loginWithPassword: (email: string, pass: string) => Promise<boolean>;
-  register: (firstName: string, lastName: string, email: string, pass: string) => Promise<boolean>;
+  register: (firstName: string, lastName: string, email: string, pass: string, autoLogin?: boolean) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -50,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = (token: string, refreshToken: string) => {
+  const login = (token: string, refreshToken: string, redirectPath: string | null = '/') => {
     Cookies.set('token', token, { expires: 1 }); // 1 day
     Cookies.set('refreshToken', refreshToken, { expires: 7 }); // 7 days
     
@@ -58,7 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.get('/users/profile')
       .then(response => {
         setUser(response.data);
-        router.push('/');
+        if (redirectPath) {
+          router.push(redirectPath);
+        }
       })
       .catch(error => {
         console.error('Login failed:', error);
@@ -68,6 +71,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithPassword = async (email: string, pass: string) => {
     try {
       const response = await api.post('/auth/login', { email, password: pass });
+      if (!response.data.access_token || !response.data.refresh_token) {
+        throw new Error('Login failed');
+      }
       const { access_token, refresh_token } = response.data;
       login(access_token, refresh_token);
       return true;
@@ -77,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (firstName: string, lastName: string, email: string, pass: string) => {
+  const register = async (firstName: string, lastName: string, email: string, pass: string, autoLogin = true) => {
     try {
       const response = await api.post('/auth/register', { 
         firstName, 
@@ -85,8 +91,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email, 
         password: pass 
       });
-      const { access_token, refresh_token } = response.data;
-      login(access_token, refresh_token);
+      if (!response.data.access_token || !response.data.refresh_token) {
+        throw new Error('Registration failed');
+      }
+      
+      if (autoLogin) {
+        const { access_token, refresh_token } = response.data;
+        login(access_token, refresh_token);
+      }
       return true;
     } catch (error) {
       console.error('Registration failed:', error);

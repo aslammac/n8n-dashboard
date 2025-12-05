@@ -5,12 +5,16 @@ import { Workflow, WorkflowDocument } from './schemas/workflow.schema';
 import { UsersService } from '../users/users.service';
 import { WorkflowAiService } from './workflow-ai.service';
 
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+
 @Injectable()
 export class WorkflowsService {
   constructor(
     @InjectModel(Workflow.name) private workflowModel: Model<WorkflowDocument>,
     private usersService: UsersService,
     private workflowAiService: WorkflowAiService,
+    @InjectQueue('workflows') private workflowsQueue: Queue,
   ) {}
 
   async create(createWorkflowDto: any, userId: string): Promise<WorkflowDocument> {
@@ -24,7 +28,7 @@ export class WorkflowsService {
           
         const analysis = await this.workflowAiService.analyzeWorkflow(jsonString);
 
-        console.log('AI Analysis:', analysis);
+        // console.log('AI Analysis:', analysis);
         
         aiData = {
           title: analysis.title,
@@ -41,7 +45,7 @@ export class WorkflowsService {
           slug: this.slugify(analysis.title),
         };
       } catch (error) {
-        console.error('AI Analysis failed:', error);
+        // console.error('AI Analysis failed:', error);
         // Fallback if AI fails
         const title = createWorkflowDto.title || 'Untitled Workflow';
         aiData = {
@@ -65,6 +69,15 @@ export class WorkflowsService {
       publishedAt: new Date(),
     });
     return createdWorkflow.save();
+  }
+
+  async processBulkUpload(workflows: any[], userId: string) {
+    console.log(`Adding bulk upload job for user ${userId} with ${workflows.length} workflows`);
+    
+    await this.workflowsQueue.add('bulk-upload', {
+      workflows,
+      userId,
+    });
   }
 
   private slugify(text: string): string {

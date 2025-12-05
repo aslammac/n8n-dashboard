@@ -29,9 +29,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear token and redirect to login if unauthorized
       Cookies.remove('token');
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
+      // Cookies.remove('refreshToken');
+      // if (typeof window !== 'undefined') {
+      //   window.location.href = '/auth/login';
+      // }
     }
     return Promise.reject(error);
   }

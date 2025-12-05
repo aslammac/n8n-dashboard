@@ -17,7 +17,7 @@ export class UsersService {
   }
 
   async findById(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).exec();
+    return this.userModel.findById(id).select('-passwordHash -newsletterSubscribed -marketingEmails -totalDownloads -totalUploads').exec();
   }
 
   async findByGoogleId(googleId: string): Promise<UserDocument | null> {
@@ -54,5 +54,35 @@ export class UsersService {
 
   async updateLastLogin(userId: string): Promise<void> {
     await this.userModel.findByIdAndUpdate(userId, { lastLoginAt: new Date() });
+  }
+
+  async verifyEmail(token: string): Promise<UserDocument | null> {
+    const user = await this.userModel.findOne({ verificationToken: token }).exec();
+    if (user) {
+      user.emailVerified = true;
+      user.verificationToken = null;
+      await user.save();
+    }
+    return user;
+  }
+
+  async findAll(): Promise<UserDocument[]> {
+    return this.userModel.find().select('-passwordHash').exec();
+  }
+
+  async updateRole(userId: string, role: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(userId, { $addToSet: { roles: role } }, { new: true }).exec();
+  }
+
+  async updateVerificationToken(userId: string, token: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { verificationToken: token }).exec();
+  }
+
+  async blockUser(userId: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(userId, { isBlocked: true }, { new: true }).exec();
+  }
+
+  async unblockUser(userId: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(userId, { isBlocked: false }, { new: true }).exec();
   }
 }

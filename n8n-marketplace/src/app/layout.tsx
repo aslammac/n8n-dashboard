@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import VerificationBanner from "@/components/VerificationBanner";
+import NotificationWrapper from "@/components/NotificationWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -47,7 +49,10 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          {children}
+          <NotificationWrapper>
+            <VerificationBanner />
+            {children}
+          </NotificationWrapper>
         </AuthProvider>
       </body>
     </html>

@@ -13,18 +13,45 @@ export default function RegisterPage() {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
+  const [success, setSuccess] = React.useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await register(firstName, lastName, email, password);
+      // Pass false to prevent auto-login/redirect
+      await register(firstName, lastName, email, password, false);
+      setSuccess(true);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8 bg-[#151519] p-8 rounded-2xl border border-gray-800 shadow-xl text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+            <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-extrabold text-white">Check your email</h2>
+          <p className="mt-2 text-gray-400">
+            We've sent a verification link to <strong>{email}</strong>. Please check your inbox and verify your account to continue.
+          </p>
+          <div className="mt-6">
+            <a href="/auth/login" className="text-blue-500 hover:text-blue-400 font-medium">
+              Back to Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">

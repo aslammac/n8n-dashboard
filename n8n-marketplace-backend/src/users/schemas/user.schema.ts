@@ -23,11 +23,17 @@ export class User {
   @Prop({ default: 'local', enum: ['local', 'google'] })
   authProvider: string;
 
+  @Prop({ type: [String], default: ['user'], enum: ['user', 'admin'] })
+  roles: string[];
+
   @Prop({ unique: true, sparse: true })
   googleId: string;
 
   @Prop({ default: false })
   emailVerified: boolean;
+
+  @Prop({ select: false, type: String })
+  verificationToken: string | null;
 
   @Prop({
     default: 'free',
@@ -64,6 +70,9 @@ export class User {
 
   @Prop({ default: false })
   creatorVerified: boolean;
+
+  @Prop({ default: false })
+  isBlocked: boolean;
 
   @Prop()
   lastLoginAt: Date;
