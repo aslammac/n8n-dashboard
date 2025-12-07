@@ -33,6 +33,7 @@ export class UsersService {
       authProvider: 'google',
       emailVerified: true,
       username: googleData.email.split('@')[0] + Math.floor(Math.random() * 10000), // temp username
+      newsletterSubscribed: googleData.newsletterSubscribed || false,
     });
     return newUser.save();
   }
@@ -66,12 +67,25 @@ export class UsersService {
     return user;
   }
 
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().select('-passwordHash').exec();
+  async findAll(search?: string): Promise<UserDocument[]> {
+    const filter: any = {};
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      filter.$or = [
+        { fullName: regex },
+        { email: regex },
+        { username: regex }
+      ];
+    }
+    return this.userModel.find(filter).select('-passwordHash').exec();
   }
 
   async updateRole(userId: string, role: string): Promise<UserDocument | null> {
     return this.userModel.findByIdAndUpdate(userId, { $addToSet: { roles: role } }, { new: true }).exec();
+  }
+
+  async removeRole(userId: string, role: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(userId, { $pull: { roles: role } }, { new: true }).exec();
   }
 
   async updateVerificationToken(userId: string, token: string): Promise<void> {

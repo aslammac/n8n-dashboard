@@ -31,7 +31,8 @@ export class AuthService {
       sub: user._id, 
       roles: user.roles || ['user'],
       isCreator: user.isCreator,
-      emailVerified: user.emailVerified
+      emailVerified: user.emailVerified,
+      subscriptionTier: user.subscriptionTier
     };
 
     if (user.isBlocked) {

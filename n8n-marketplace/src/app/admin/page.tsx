@@ -14,7 +14,8 @@ export default function AdminDashboard() {
     totalUsers: 0,
     totalWorkflows: 0,
     totalDownloads: 0,
-    recentUsers: []
+    recentUsers: [],
+    activeUsers: 0,
   });
 
   useEffect(() => {

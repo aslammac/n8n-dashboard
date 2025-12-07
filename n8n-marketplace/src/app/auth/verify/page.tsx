@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
+import Cookies from 'js-cookie';
 
 function VerifyContent() {
   const searchParams = useSearchParams();
@@ -23,8 +24,11 @@ function VerifyContent() {
       try {
         await api.get(`/auth/verify?token=${token}`);
         setStatus('success');
+        // Clear tokens to force re-login with verified status
+        Cookies.remove('token');
+        Cookies.remove('refreshToken');
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/auth/login');
         }, 3000);
       } catch (err: any) {
         setStatus('error');

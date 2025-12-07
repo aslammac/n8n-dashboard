@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { MoreVertical, Shield, Ban, CheckCircle } from 'lucide-react';
+import { MoreVertical, Shield, Ban, CheckCircle, Search } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
 
 interface User {
   _id: string;
@@ -14,13 +15,13 @@ interface User {
 export default function UsersTable() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 500);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      // Assuming we have a users endpoint, if not we might need to add one or use a search endpoint
-      // For now, let's assume GET /users returns all users for admin
-      // If not, we'll need to update backend UsersController.findAll to be accessible by admin
-      const res = await api.get('/users'); 
+      const res = await api.get(`/users?search=${debouncedSearch}`); 
       setUsers(res.data);
     } catch (error) {
       console.error('Failed to fetch users', error);
@@ -31,7 +32,7 @@ export default function UsersTable() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [debouncedSearch]);
 
   const toggleBlock = async (user: User) => {
     try {
@@ -46,12 +47,20 @@ export default function UsersTable() {
     }
   };
 
-  if (loading) return <div className="text-white">Loading users...</div>;
-
   return (
     <div className="bg-[#151519] border border-gray-800 rounded-xl overflow-hidden">
-      <div className="p-6 border-b border-gray-800">
+      <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-lg font-semibold text-white">Users Management</h3>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-4 py-2 bg-[#1c1c21] border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors w-full sm:w-64"
+          />
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left">

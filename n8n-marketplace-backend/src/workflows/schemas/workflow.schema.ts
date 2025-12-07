@@ -12,7 +12,7 @@ export class Workflow {
   @Prop({ required: true, unique: true, index: true })
   slug: string;
 
-  @Prop({ maxlength: 160 })
+  @Prop({ maxlength: 200 })
   shortDescription: string;
 
   @Prop()
@@ -41,6 +41,9 @@ export class Workflow {
 
   @Prop()
   setupTime: string;
+
+  @Prop([String])
+  setupSteps: string[];
 
   @Prop()
   triggerType: string;

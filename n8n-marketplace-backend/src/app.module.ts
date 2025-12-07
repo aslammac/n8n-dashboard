@@ -16,6 +16,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { BullModule } from '@nestjs/bullmq';
 import redisConfig from './config/redis.config';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -62,6 +63,12 @@ import { APP_GUARD } from '@nestjs/core';
     MailModule,
     AnalyticsModule,
     NotificationsModule,
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60 * 60 * 1000, // 1 hour default TTL (in milliseconds for cache-manager v5, check version)
+      // For cache-manager v5+, ttl is in milliseconds. For v4, it was seconds.
+      // Assuming v5 based on recent installs.
+    }),
   ],
   controllers: [AppController],
   providers: [

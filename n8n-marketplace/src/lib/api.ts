@@ -28,7 +28,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Clear token and redirect to login if unauthorized
-      Cookies.remove('token');
+      // Cookies.remove('token');
       // Cookies.remove('refreshToken');
       // if (typeof window !== 'undefined') {
       //   window.location.href = '/auth/login';

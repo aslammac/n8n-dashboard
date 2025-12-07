@@ -19,6 +19,12 @@ export default registerAs('mail', () => {
     secure,
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
-    from: process.env.MAIL_FROM || '"No Reply" <noreply@example.com>',
+    from: process.env.MAIL_FROM_NAME && process.env.MAIL_FROM_EMAIL 
+      ? `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_EMAIL}>`
+      : (process.env.MAIL_FROM || '"No Reply" <noreply@example.com>'),
+    mailjet: {
+      apiKey: process.env.MAILJET_API_KEY,
+      apiSecret: process.env.MAILJET_API_SECRET,
+    }
   };
 });

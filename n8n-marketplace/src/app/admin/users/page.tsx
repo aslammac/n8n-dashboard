@@ -10,14 +10,35 @@ export default function UsersPage() {
   const { data: users, error, mutate } = useSWR('/users', fetcher);
   const [loading, setLoading] = useState<string | null>(null);
 
-  const handleRoleUpdate = async (userId: string, role: string) => {
+  const handleRoleUpdate = async (userId: string, role: string, action: 'add' | 'remove') => {
     setLoading(userId);
     try {
-      await api.post(`/users/${userId}/role`, { role });
+      if (action === 'add') {
+        await api.post(`/users/${userId}/role`, { role });
+      } else {
+        await api.delete(`/users/${userId}/role/${role}`);
+      }
       mutate(); // Refresh data
     } catch (err) {
       console.error('Failed to update role:', err);
       alert('Failed to update role');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleBlockUser = async (userId: string, isBlocked: boolean) => {
+    setLoading(userId);
+    try {
+      if (isBlocked) {
+        await api.patch(`/users/${userId}/unblock`);
+      } else {
+        await api.patch(`/users/${userId}/block`);
+      }
+      mutate(); // Refresh data
+    } catch (err) {
+      console.error('Failed to update block status:', err);
+      alert('Failed to update block status');
     } finally {
       setLoading(null);
     }
@@ -78,25 +99,67 @@ export default function UsersPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  {user.emailVerified ? (
-                    <span className="flex items-center text-xs text-green-400">
-                      <Check className="w-3 h-3 mr-1" /> Verified
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-xs text-yellow-400">
-                      <X className="w-3 h-3 mr-1" /> Pending
-                    </span>
-                  )}
+                  <div className="flex flex-col gap-1">
+                    {user.emailVerified ? (
+                      <span className="flex items-center text-xs text-green-400">
+                        <Check className="w-3 h-3 mr-1" /> Verified
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-xs text-yellow-400">
+                        <X className="w-3 h-3 mr-1" /> Pending
+                      </span>
+                    )}
+                    {user.isBlocked && (
+                      <span className="flex items-center text-xs text-red-400">
+                        <ShieldAlert className="w-3 h-3 mr-1" /> Blocked
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleRoleUpdate(user._id, 'admin')}
-                    disabled={loading === user._id || user.roles?.includes('admin')}
-                    className="text-xs font-medium text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
-                  >
-                    <Shield className="w-3 h-3" />
-                    <span>Make Admin</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {user.roles?.includes('admin') ? (
+                      <button
+                        onClick={() => handleRoleUpdate(user._id, 'admin', 'remove')}
+                        disabled={loading === user._id}
+                        className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        <ShieldAlert className="w-3 h-3" />
+                        <span>Remove Admin</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRoleUpdate(user._id, 'admin', 'add')}
+                        disabled={loading === user._id}
+                        className="text-xs font-medium text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        <Shield className="w-3 h-3" />
+                        <span>Make Admin</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleBlockUser(user._id, user.isBlocked)}
+                      disabled={loading === user._id}
+                      className={`text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 ${
+                        user.isBlocked 
+                          ? 'text-green-400 hover:text-green-300' 
+                          : 'text-orange-400 hover:text-orange-300'
+                      }`}
+                    >
+                      {user.isBlocked ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Unblock</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="w-3 h-3" />
+                          <span>Block</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

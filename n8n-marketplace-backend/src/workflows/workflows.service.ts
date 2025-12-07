@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Workflow, WorkflowDocument } from './schemas/workflow.schema';
+import { Rating, RatingDocument } from './schemas/rating.schema';
 import { UsersService } from '../users/users.service';
 import { WorkflowAiService } from './workflow-ai.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager'; // Use type import
 
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -12,10 +15,16 @@ import { Queue } from 'bullmq';
 export class WorkflowsService {
   constructor(
     @InjectModel(Workflow.name) private workflowModel: Model<WorkflowDocument>,
+    @InjectModel(Rating.name) private ratingModel: Model<RatingDocument>,
     private usersService: UsersService,
     private workflowAiService: WorkflowAiService,
     @InjectQueue('workflows') private workflowsQueue: Queue,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  // ... (existing methods)
+
+  // ... (existing methods: create, processBulkUpload, togglePremium, slugify, extractNodes, findAll)
 
   async create(createWorkflowDto: any, userId: string): Promise<WorkflowDocument> {
     let aiData: any = {};
@@ -42,6 +51,7 @@ export class WorkflowsService {
           benefits: analysis.benefits,
           useCase: analysis.useCase,
           setupTime: analysis.setupTime,
+          setupSteps: analysis.setupSteps,
           slug: this.slugify(analysis.title),
         };
       } catch (error) {
@@ -68,6 +78,8 @@ export class WorkflowsService {
       creatorId: userId,
       publishedAt: new Date(),
     });
+    
+    await this.invalidateCache();
     return createdWorkflow.save();
   }
 
@@ -80,9 +92,17 @@ export class WorkflowsService {
     });
   }
 
+  async togglePremium(id: string): Promise<WorkflowDocument | null> {
+    const workflow = await this.workflowModel.findById(id);
+    if (!workflow) return null;
+    workflow.isPremium = !workflow.isPremium;
+    await this.invalidateCache(workflow.slug);
+    return workflow.save();
+  }
+
   private slugify(text: string): string {
-    return text
-      .toString()
+    if (!text) return '';
+    return String(text)
       .toLowerCase()
       .replace(/\s+/g, '-')           // Replace spaces with -
       .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
@@ -112,6 +132,12 @@ export class WorkflowsService {
   }
 
   async findAll(query: any): Promise<{ data: WorkflowDocument[], meta: any }> {
+    const cacheKey = `workflows:all:${JSON.stringify(query)}`;
+    const cachedResult = await this.cacheManager.get(cacheKey);
+    if (cachedResult) {
+      return cachedResult as { data: WorkflowDocument[], meta: any };
+    }
+
     const { page = 1, limit = 12, search, category, complexity, tags, sort } = query;
     const skip = (page - 1) * limit;
     const filter: any = { status: 'published', isPublic: true };
@@ -135,6 +161,9 @@ export class WorkflowsService {
     if (tags) {
       filter.tags = { $in: tags.split(',') };
     }
+    if (query.isPremium !== undefined) {
+      filter.isPremium = query.isPremium === 'true';
+    }
 
     let sortOption: any = { createdAt: -1 };
     if (sort === 'downloads') sortOption = { downloadsCount: -1 };
@@ -152,7 +181,7 @@ export class WorkflowsService {
       this.workflowModel.countDocuments(filter).exec(),
     ]);
 
-    return {
+    const result = {
       data,
       meta: {
         total,
@@ -161,13 +190,24 @@ export class WorkflowsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    await this.cacheManager.set(cacheKey, result, 60 * 1000); // 1 minute TTL for lists
+    return result;
   }
 
   async findOne(slug: string): Promise<WorkflowDocument> {
+    const cacheKey = `workflow:${slug}`;
+    const cachedWorkflow = await this.cacheManager.get(cacheKey);
+    if (cachedWorkflow) {
+      return cachedWorkflow as WorkflowDocument;
+    }
+
     const workflow = await this.workflowModel.findOne({ slug }).populate('creatorId', 'fullName avatarUrl username').exec();
     if (!workflow) {
       throw new NotFoundException(`Workflow with slug ${slug} not found`);
     }
+
+    await this.cacheManager.set(cacheKey, workflow, 5 * 60 * 1000); // 5 minutes TTL for details
     return workflow;
   }
 
@@ -177,6 +217,61 @@ export class WorkflowsService {
           throw new NotFoundException(`Workflow with id ${id} not found`);
       }
       return workflow;
+  }
+
+  async rateWorkflow(id: string, userId: string, rating: number, comment?: string): Promise<WorkflowDocument> {
+    const existingRating = await this.ratingModel.findOne({ workflowId: id, userId });
+
+    if (existingRating) {
+      existingRating.rating = rating;
+      if (comment) existingRating.comment = comment;
+      await existingRating.save();
+    } else {
+      await this.ratingModel.create({
+        workflowId: id,
+        userId,
+        rating,
+        comment
+      });
+    }
+
+    // Recalculate average rating
+    const ratings = await this.ratingModel.find({ workflowId: id });
+    const total = ratings.reduce((acc, curr) => acc + curr.rating, 0);
+    const average = total / ratings.length;
+
+    const updatedWorkflow = await this.workflowModel.findByIdAndUpdate(
+      id,
+      { 
+        ratingAverage: parseFloat(average.toFixed(1)),
+        ratingCount: ratings.length
+      },
+      { new: true }
+    ).exec();
+    
+    if (!updatedWorkflow) throw new NotFoundException('Workflow not found');
+    await this.invalidateCache(updatedWorkflow.slug);
+    return updatedWorkflow;
+  }
+
+  private async invalidateCache(slug?: string) {
+    if (slug) {
+      await this.cacheManager.del(`workflow:${slug}`);
+    }
+    
+    // Clear all list caches
+    // Using 'any' cast because cache-manager v5+ types are strict/different
+    try {
+        const store = (this.cacheManager as any).store;
+        if (store && typeof store.keys === 'function') {
+            const keys = await store.keys('workflows:all:*');
+            if (keys && keys.length > 0) {
+                await store.del(keys);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to invalidate list cache', e);
+    }
   }
 
   async update(id: string, updateWorkflowDto: any, userId: string): Promise<WorkflowDocument> {
@@ -200,5 +295,33 @@ export class WorkflowsService {
 
   async incrementDownloads(id: string): Promise<void> {
     await this.workflowModel.findByIdAndUpdate(id, { $inc: { downloadsCount: 1 } });
+  }
+
+  async incrementViews(id: string, ip: string): Promise<void> {
+    const cacheKey = `view:${id}:${ip}`;
+    const hasViewed = await this.cacheManager.get(cacheKey);
+
+    if (!hasViewed) {
+      await this.workflowModel.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } });
+      await this.cacheManager.set(cacheKey, 'true', 60 * 60 * 1000); // 1 hour TTL
+    }
+  }
+
+  async getRecommendations(id: string): Promise<WorkflowDocument[]> {
+    const workflow = await this.workflowModel.findById(id);
+    if (!workflow) return [];
+
+    return this.workflowModel.find({
+      _id: { $ne: id },
+      status: 'published',
+      isPublic: true,
+      $or: [
+        { category: workflow.category },
+        { tags: { $in: workflow.tags } }
+      ]
+    })
+    .select('title slug shortDescription category ratingAverage downloadsCount isPremium')
+    .limit(4)
+    .exec();
   }
 }

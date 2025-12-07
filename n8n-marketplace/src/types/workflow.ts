@@ -41,14 +41,18 @@ export interface WorkflowMetadata {
   category: string;
   tags: string[];
   author: WorkflowAuthor;
-  downloads: number;
-  views: number;
-  rating: number;
+  downloadsCount: number;
+  viewsCount: number;
+  ratingAverage?: number;
+  ratingCount?: number;
+  likesCount: number;
   created: string;
   updated: string;
   nodes: string[]; // List of node types used
   nodeCount: number;
   complexity: 'beginner' | 'intermediate' | 'advanced';
+  setupSteps?: string[];
+  isPremium?: boolean;
   workflow?: N8nWorkflowData;
 }
 export interface PaginatedResponse<T> {

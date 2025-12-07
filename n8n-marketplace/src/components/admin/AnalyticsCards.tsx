@@ -5,6 +5,7 @@ interface Stats {
   totalUsers: number;
   totalWorkflows: number;
   totalDownloads: number;
+  activeUsers: number;
 }
 
 export default function AnalyticsCards({ stats }: { stats: Stats }) {
@@ -31,8 +32,8 @@ export default function AnalyticsCards({ stats }: { stats: Stats }) {
       bg: 'bg-green-500/10',
     },
     {
-      title: 'Active Now',
-      value: '24', // Mock data for now
+      title: 'Active Users',
+      value: stats.activeUsers,
       icon: TrendingUp,
       color: 'text-orange-500',
       bg: 'bg-orange-500/10',

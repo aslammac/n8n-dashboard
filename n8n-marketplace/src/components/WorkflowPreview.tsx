@@ -36,17 +36,27 @@ const WorkflowPreview = memo(function WorkflowPreview({ workflow, className }: W
 
   useEffect(() => {
     if (isVisible && demoRef.current) {
-      try {
-        // @ts-ignore
-        demoRef.current.workflow = JSON.stringify(workflow);
-      } catch (e) {
-        console.error("Error setting workflow data", e);
+      const setWorkflowData = () => {
+        try {
+          const workflowData = typeof workflow === 'string' ? workflow : JSON.stringify(workflow);
+          console.log('Setting n8n-demo workflow data length:', workflowData.length);
+          // @ts-ignore
+          demoRef.current.workflow = workflowData;
+        } catch (e) {
+          console.error("Error setting workflow data", e);
+        }
+      };
+
+      if (customElements.get('n8n-demo')) {
+        setWorkflowData();
+      } else {
+        customElements.whenDefined('n8n-demo').then(setWorkflowData);
       }
     }
   }, [isVisible, workflow]);
 
   return (
-    <div ref={containerRef} className={`w-full h-full overflow-hidden bg-gray-50 dark:bg-gray-900 ${className}`}>
+    <div ref={containerRef} className={`w-full h-full overflow-hidden bg-gray-50 dark:bg-gray-900 relative ${className}`}>
       {!isVisible ? (
         <div className="w-full h-full flex items-center justify-center animate-pulse">
           <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -56,7 +66,16 @@ const WorkflowPreview = memo(function WorkflowPreview({ workflow, className }: W
       ) : (
         React.createElement('n8n-demo', {
           ref: demoRef,
-          style: { width: '100%', height: '100%' }
+          style: { 
+            width: '100% ', 
+            height: '100%', 
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }
         })
       )}
     </div>

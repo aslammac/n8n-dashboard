@@ -6,10 +6,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Define paths that don't require authentication
-  const publicPaths = ['/auth/login', '/auth/register', '/auth/callback'];
+  const publicPaths = ['/auth/login', '/auth/register', '/auth/callback', '/auth/verify', '/', '/workflow'];
   
   // Check if the current path is public
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+  const isPublicPath = publicPaths.some(path => {
+    if (path === '/') return pathname === '/';
+    return pathname.startsWith(path);
+  });
 
   // Exclude static assets and Next.js internals
   if (

@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request, Ip } from '@nestjs/common';
 import { WorkflowsService } from './workflows.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 
 @Controller('workflows')
 export class WorkflowsController {
@@ -19,6 +21,19 @@ export class WorkflowsController {
     return { message: 'Bulk upload started', count: body.workflows.length };
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard, EmailVerifiedGuard)
+  @Roles('admin')
+  @Patch(':id/premium')
+  async togglePremium(@Param('id') id: string) {
+    return this.workflowsService.togglePremium(id);
+  }
+
+  // Removed separate view endpoint, now handled in findOne
+  // @Post(':id/view')
+  // async incrementViews(@Param('id') id: string) {
+  //   return this.workflowsService.incrementViews(id);
+  // }
+
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Post()
   create(@Body() createWorkflowDto: any, @Request() req: any) {
@@ -26,14 +41,45 @@ export class WorkflowsController {
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @Post(':id/rate')
+  async rateWorkflow(
+    @Param('id') id: string,
+    @Body() body: { rating: number; comment?: string },
+    @Request() req: any
+  ) {
+    return this.workflowsService.rateWorkflow(id, req.user.userId, body.rating, body.comment);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
   @Get()
   findAll(@Query() query: any) {
     return this.workflowsService.findAll(query);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':slug')
-  findOne(@Param('slug') slug: string) {
-    return this.workflowsService.findOne(slug);
+  async findOne(@Param('slug') slug: string, @Request() req: any, @Ip() ip: string) {
+    const workflow = await this.workflowsService.findOne(slug);
+    
+    // Increment views with IP check
+    await this.workflowsService.incrementViews(workflow._id.toString(), ip);
+    
+    if (workflow.isPremium) {
+      const user = req.user;
+      if (!user) {
+        throw new UnauthorizedException('This is a premium workflow. Please log in to view details.');
+      }
+      if (user.subscriptionTier === 'free') {
+        throw new ForbiddenException('This is a premium workflow. Please upgrade your plan to view details.');
+      }
+    }
+    
+    return workflow;
+  }
+
+  @Get(':id/recommendations')
+  async getRecommendations(@Param('id') id: string) {
+    return this.workflowsService.getRecommendations(id);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard)

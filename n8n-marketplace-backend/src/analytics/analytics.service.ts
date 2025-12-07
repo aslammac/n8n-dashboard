@@ -12,20 +12,24 @@ export class AnalyticsService {
   ) {}
 
   async getDashboardStats() {
-    const [totalUsers, totalWorkflows, recentUsers, totalDownloads] = await Promise.all([
+    const [totalUsers, totalWorkflows, recentUsers, totalDownloads, activeUsers] = await Promise.all([
       this.userModel.countDocuments(),
       this.workflowModel.countDocuments(),
       this.userModel.find().sort({ createdAt: -1 }).limit(5).select('-passwordHash'),
       this.workflowModel.aggregate([
         { $group: { _id: null, total: { $sum: '$downloadsCount' } } }
-      ]).then(res => res[0]?.total || 0)
+      ]).then(res => res[0]?.total || 0),
+      this.userModel.countDocuments({ emailVerified: true }),
+      
     ]);
+  
 
     return {
       totalUsers,
       totalWorkflows,
       totalDownloads,
       recentUsers,
+      activeUsers,  
     };
   }
 }

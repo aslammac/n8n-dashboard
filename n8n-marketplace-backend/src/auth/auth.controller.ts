@@ -56,6 +56,7 @@ export class AuthController {
   @Post('resend-verification')
   @UseGuards(JwtAuthGuard)
   async resendVerification(@Req() req: any) {
+    console.log('Resending verification email for user:', req.user.userId);
     return this.authService.resendVerificationEmail(req.user.userId);
   }
 }

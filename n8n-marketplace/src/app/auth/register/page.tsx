@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [newsletter, setNewsletter] = React.useState(true);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       // Pass false to prevent auto-login/redirect
-      await register(firstName, lastName, email, password, false);
+      await register(firstName, lastName, email, password, newsletter, false);
       setSuccess(true);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
@@ -61,7 +62,7 @@ export default function RegisterPage() {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Join the n8n marketplace community
+            Join the FlowStore community
           </p>
         </div>
 
@@ -127,6 +128,20 @@ export default function RegisterPage() {
                 className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-700 placeholder-gray-500 text-white bg-[#1c1c21] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm"
                 placeholder="Password"
               />
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                id="newsletter"
+                name="newsletter"
+                type="checkbox"
+                checked={newsletter}
+                onChange={(e) => setNewsletter(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-700 rounded bg-[#1c1c21]"
+              />
+              <label htmlFor="newsletter" className="ml-2 block text-sm text-gray-400">
+                Subscribe to our newsletter for updates and new workflows
+              </label>
             </div>
           </div>
 

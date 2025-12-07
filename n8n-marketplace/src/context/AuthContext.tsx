@@ -13,6 +13,7 @@ interface User {
   picture?: string;
   subscriptionTier: string;
   emailVerified: boolean;
+  roles: string[];
 }
 
 interface AuthContextType {
@@ -20,7 +21,7 @@ interface AuthContextType {
   loading: boolean;
   login: (token: string, refreshToken: string, redirectPath?: string | null) => void;
   loginWithPassword: (email: string, pass: string) => Promise<boolean>;
-  register: (firstName: string, lastName: string, email: string, pass: string, autoLogin?: boolean) => Promise<boolean>;
+  register: (firstName: string, lastName: string, email: string, pass: string, newsletter?: boolean, autoLogin?: boolean) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -52,8 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = (token: string, refreshToken: string, redirectPath: string | null = '/') => {
-    Cookies.set('token', token, { expires: 1 }); // 1 day
-    Cookies.set('refreshToken', refreshToken, { expires: 7 }); // 7 days
+    console.log(token, refreshToken);
+    Cookies.set('token', token, { expires: 1, path: '/' }); // 1 day
+    Cookies.set('refreshToken', refreshToken, { expires: 7, path: '/' }); // 7 days
     
     // Fetch user profile immediately after setting token
     api.get('/users/profile')
@@ -71,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithPassword = async (email: string, pass: string) => {
     try {
       const response = await api.post('/auth/login', { email, password: pass });
+      console.log(response.data);
       if (!response.data.access_token || !response.data.refresh_token) {
         throw new Error('Login failed');
       }
@@ -83,13 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (firstName: string, lastName: string, email: string, pass: string, autoLogin = true) => {
+  const register = async (firstName: string, lastName: string, email: string, pass: string, newsletter = false, autoLogin = true) => {
     try {
       const response = await api.post('/auth/register', { 
         firstName, 
         lastName, 
         email, 
-        password: pass 
+        password: pass,
+        newsletterSubscribed: newsletter
       });
       if (!response.data.access_token || !response.data.refresh_token) {
         throw new Error('Registration failed');

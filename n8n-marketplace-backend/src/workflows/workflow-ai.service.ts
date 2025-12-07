@@ -14,7 +14,7 @@ export class WorkflowAiService {
     const model = this.configService.get<string>('app.geminiModel');  
     if (apiKey) {
       this.ai = new GoogleGenAI({ apiKey });
-      this.model = model || 'gemini-2.0-flash-exp';
+      this.model = model || 'gemini-2.0-flash';
     } else {
       this.logger.warn('GEMINI_API_KEY not found. AI analysis will be disabled.');
     }
@@ -103,6 +103,11 @@ ANALYSIS GUIDELINES:
           items: { type: Type.STRING },
           description: "List of prerequisites or API keys needed"
         },
+        setupSteps: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "List of 3-7 key setup steps"
+        },
         benefits: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
@@ -121,6 +126,7 @@ ANALYSIS GUIDELINES:
         "tags",
         "nodes",
         "requirements",
+        "setupSteps",
         "benefits",
         "setupTime",
         "triggerType"
@@ -138,7 +144,7 @@ ANALYSIS GUIDELINES:
       parts.push({ text: `\nJSON Content:\n${workflowJson}` });
 
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp', // Or appropriate model
+        model: this.model,
         contents: [
           {
             role: "user",

@@ -8,11 +8,13 @@ export default function LoginPage() {
   const { loginWithPassword } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [newsletter, setNewsletter] = React.useState(true);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
   const handleGoogleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/google`;
+    // Pass newsletter preference as a query parameter
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/google?newsletter=${newsletter}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +38,7 @@ export default function LoginPage() {
             Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Access thousands of n8n workflows
+            Access thousands of FlowStore workflows
           </p>
         </div>
 
@@ -115,6 +117,20 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {/* <div className="flex items-center">
+              <input
+                id="newsletter"
+                name="newsletter"
+                type="checkbox"
+                checked={newsletter}
+                onChange={(e) => setNewsletter(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-700 rounded bg-[#1c1c21]"
+              />
+              <label htmlFor="newsletter" className="ml-2 block text-sm text-gray-400">
+                Subscribe to our newsletter (applied to new accounts)
+              </label>
+            </div> */}
 
             <div>
               <button

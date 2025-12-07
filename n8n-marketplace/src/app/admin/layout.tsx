@@ -6,9 +6,28 @@ import { usePathname } from 'next/navigation';
 import { Users, Upload, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
+import { useRouter } from 'next/navigation';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const router = useRouter();
+  const { user, logout, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading) {
+      if (!user || !user.roles.includes('admin')) {
+        router.push('/');
+      }
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <div className="h-screen flex items-center justify-center bg-[#0f0f11] text-white">Loading...</div>;
+  }
+
+  if (!user || !user.roles.includes('admin')) {
+    return null;
+  }
 
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },

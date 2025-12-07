@@ -9,18 +9,18 @@ import NotificationWrapper from "@/components/NotificationWrapper";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "n8n Marketplace | Discover & Share Automation Workflows",
+  title: "FlowStore | Discover & Share Automation Workflows",
   description: "The premier marketplace for n8n automation workflows. Discover, share, and deploy powerful automations for Slack, Google Sheets, AI, and more.",
-  keywords: ["n8n", "automation", "workflow", "marketplace", "low-code", "integration"],
+  keywords: ["n8n", "automation", "workflow", "marketplace", "low-code", "integration", "flowstore"],
   openGraph: {
-    title: "n8n Marketplace",
+    title: "FlowStore",
     description: "Discover & Share Automation Workflows",
     type: "website",
-    siteName: "n8n Marketplace",
+    siteName: "FlowStore",
   },
   twitter: {
     card: "summary_large_image",
-    title: "n8n Marketplace",
+    title: "FlowStore",
     description: "Discover & Share Automation Workflows",
   }
 };

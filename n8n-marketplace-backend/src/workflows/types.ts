@@ -8,6 +8,7 @@ export interface WorkflowAnalysis {
   tags: string[];
   nodes: string[];
   requirements: string[];
+  setupSteps: string[];
   benefits: string[];
   setupTime: string;
   triggerType: string;
