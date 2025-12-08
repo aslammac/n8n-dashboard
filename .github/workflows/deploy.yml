@@ -27,9 +27,9 @@ jobs:
           git pull origin main
 
           # Rebuild and restart containers
-          # Using docker-compose from the root (using sudo)
-          sudo docker-compose down
-          sudo docker-compose up --build -d
+          # Using docker-compose from the root
+          docker-compose down
+          docker-compose up --build -d
 
           # Prune unused images to save space
-          sudo docker image prune -f
+          docker image prune -f
