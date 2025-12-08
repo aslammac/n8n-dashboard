@@ -13,6 +13,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Install Nest CLI globally to ensure build command works
+RUN npm install -g @nestjs/cli
+
 # Build the application
 RUN npm run build
 
