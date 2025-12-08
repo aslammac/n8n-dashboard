@@ -1,12 +1,13 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   return {
     rules: {
       userAgent: '*',
       allow: '/',
       disallow: ['/admin/', '/auth/', '/upload/'],
     },
-    sitemap: 'https://flowstore.app/sitemap.xml', // Replace with actual domain
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

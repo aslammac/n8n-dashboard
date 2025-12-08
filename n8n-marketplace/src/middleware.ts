@@ -6,13 +6,16 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Define paths that don't require authentication
-  const publicPaths = ['/auth/login', '/auth/register', '/auth/callback', '/auth/verify', '/', '/workflow'];
+  const publicPaths = ['/', '/workflow'];
+  const authPaths = ['/auth/login', '/auth/register', '/auth/callback', '/auth/verify'];
   
   // Check if the current path is public
   const isPublicPath = publicPaths.some(path => {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
-  });
+  }) || authPaths.some(path => pathname.startsWith(path));
+
+  const isAuthPath = authPaths.some(path => pathname.startsWith(path));
 
   // Exclude static assets and Next.js internals
   if (
@@ -32,7 +35,7 @@ export function middleware(request: NextRequest) {
   }
 
   // If user is logged in and tries to access auth pages (login/register), redirect to home
-  if (token && isPublicPath) {
+  if (token && isAuthPath) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

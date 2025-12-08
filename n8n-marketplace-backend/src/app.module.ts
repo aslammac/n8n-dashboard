@@ -28,6 +28,7 @@ import { APP_GUARD } from '@nestjs/core';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, jwtConfig, appConfig, mailConfig, redisConfig],
+      envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],

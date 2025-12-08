@@ -4,7 +4,7 @@ import WorkflowDetails from '@/components/WorkflowDetails';
 import { WorkflowMetadata } from '@/types/workflow';
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function getWorkflow(id: string): Promise<WorkflowMetadata | null> {
@@ -49,7 +49,8 @@ async function getWorkflow(id: string): Promise<WorkflowMetadata | null> {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const workflow = await getWorkflow(params.id);
+  const { id } = await params;
+  const workflow = await getWorkflow(id);
   
   if (!workflow) {
     return {
@@ -76,7 +77,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function WorkflowPage({ params }: PageProps) {
-  const workflow = await getWorkflow(params.id);
+  const { id } = await params;
+  const workflow = await getWorkflow(id);
 
   if (!workflow) {
     return (

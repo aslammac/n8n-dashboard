@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./n8n-marketplace
+      dockerfile: Dockerfile
+    container_name: n8n-marketplace-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+      - NEXT_PUBLIC_APP_URL=https://flowstore.dev
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # Backend (NestJS)
+  backend:
+    build:
+      context: ./n8n-marketplace-backend
+      dockerfile: Dockerfile
+    container_name: n8n-marketplace-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # Use host.docker.internal for Mongo (assuming it's still local/external)
+      - DATABASE_URI=mongodb://host.docker.internal:27017/n8n-marketplace
+      # Use the internal redis service
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FRONTEND_URL=http://localhost:3000
+    env_file:
+      - ./n8n-marketplace-backend/.env.production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  # Redis (Merged from existing setup)
+  redis:
+    image: redis:7-alpine
+    container_name: redis-standalone
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis_data:
