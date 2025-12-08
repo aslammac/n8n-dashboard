@@ -18,6 +18,8 @@ RUN npm install -g @nestjs/cli
 
 # Build the application
 RUN npm run build
+RUN ls -la /app
+RUN ls -la /app/dist || echo "dist directory not found"
 
 # Set environment to production
 ENV NODE_ENV=production
@@ -26,4 +28,4 @@ ENV NODE_ENV=production
 EXPOSE 3001
 
 # Start the application
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
