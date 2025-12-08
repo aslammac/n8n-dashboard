@@ -28,8 +28,8 @@ jobs:
 
           # Rebuild and restart containers
           # Using docker-compose from the root
-          docker-compose down
-          docker-compose up --build -d
+          docker compose down
+          docker compose up --build -d
 
           # Prune unused images to save space
           docker image prune -f
