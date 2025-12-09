@@ -28,6 +28,9 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // API Prefix
+  app.setGlobalPrefix(configService.get<string>('app.apiPrefix') || 'api/v1');
+
   // Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('n8n Marketplace API')
@@ -37,9 +40,6 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-
-  // API Prefix
-  app.setGlobalPrefix(configService.get<string>('app.apiPrefix') || 'api/v1');
 
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port);
