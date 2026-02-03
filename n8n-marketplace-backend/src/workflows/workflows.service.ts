@@ -137,7 +137,6 @@ export class WorkflowsService {
     if (cachedResult) {
       return cachedResult as { data: WorkflowDocument[], meta: any };
     }
-
     const { page = 1, limit = 12, search, category, complexity, tags, sort } = query;
     const skip = (page - 1) * limit;
     const filter: any = { status: 'published', isPublic: true };

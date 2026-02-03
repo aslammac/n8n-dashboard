@@ -1,8 +1,8 @@
-name: Deploy to GCE
+name: Deploy to Linode
 
-# on:
-#   push:
-#     branches: [ "main" ]
+on:
+  push:
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -15,21 +15,21 @@ jobs:
     - name: Deploy via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.GCE_HOST }}
-        username: ${{ secrets.GCE_USERNAME }}
-        key: ${{ secrets.GCE_SSH_KEY }}
+        host: ${{ secrets.LINODE_HOST }}
+        username: ${{ secrets.LINODE_USERNAME }}
+        key: ${{ secrets.LINODE_SSH_KEY }}
         port: 22
         script: |
-          # Navigate to project directory (adjust path as needed)
+          # Navigate to project directory
+          # MAKE SURE this folder exists on your Linode server first!
           cd ~/n8n-dashboard
 
           # Pull latest changes
           git pull origin main
 
           # Rebuild and restart containers
-          # Using docker-compose from the root
           docker compose down
           docker compose up --build -d
 
-          # Prune unused images to save space
+          # Prune unused images
           docker image prune -f

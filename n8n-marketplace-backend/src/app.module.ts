@@ -36,6 +36,11 @@ import { APP_GUARD } from '@nestjs/core';
         connection: {
           host: configService.get('redis.host'),
           port: configService.get('redis.port'),
+          password: configService.get('redis.password'),
+          username: configService.get('redis.username'),
+          tls: {
+        rejectUnauthorized: false, // Required for Upstash's managed certificates
+      },
         },
       }),
       inject: [ConfigService],

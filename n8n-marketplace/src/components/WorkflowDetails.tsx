@@ -78,12 +78,12 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <Link 
+                {/* <Link 
                   href="/upload"
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center shadow-lg shadow-blue-900/20"
                 >
                   <span className="hidden sm:inline">Upload Workflow</span>
-                </Link>
+                </Link> */}
                 
                 <div className="flex items-center space-x-3 border-l border-gray-700 pl-4">
                   <div className="flex flex-col items-end hidden sm:flex">
