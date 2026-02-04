@@ -23,8 +23,13 @@ async function bootstrap() {
   );
 
   // CORS
+  const frontendUrl = configService.get<string>('app.frontendUrl') || '';
+  const origins = frontendUrl.includes(',') 
+    ? frontendUrl.split(',').map(url => url.trim()) 
+    : frontendUrl;
+
   app.enableCors({
-    origin: configService.get<string>('app.frontendUrl'),
+    origin: origins,
     credentials: true,
   });
 
