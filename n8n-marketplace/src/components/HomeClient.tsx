@@ -140,17 +140,17 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
         <div className="container mx-auto px-6 relative z-10 text-center">
           <div className="inline-flex items-center px-3 py-1 rounded-full glass-panel text-xs font-medium text-blue-400 mb-8 border border-blue-500/20">
             <span className="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span>
-            The #1 Marketplace for n8n Workflows
+            Expert-verified n8n templates now available
           </div>
           
           <h2 className="text-5xl md:text-6xl font-medium text-white mb-6 tracking-tight leading-tight">
-            Automate your work with <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-600">FlowStore</span>
+            Supercharge your <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-600">n8n automation stack</span>
           </h2>
           
           <p className="text-xl font-extralight text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Discover, share, and deploy powerful n8n automation workflows. 
-            Join thousands of developers building the future of automation.
+            Discover hundreds of production-ready n8n workflows. 
+            Built by the community, vetted by experts, ready to deploy in seconds.
           </p>
 
           <div className="max-w-2xl mx-auto relative group">
@@ -159,7 +159,7 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
               <Search className="w-6 h-6 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search for workflows, nodes, or categories..."
+                placeholder="Search for workflows (e.g., Shopify, Slack, CRM)..."
                 className="w-full bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 focus:outline-0 px-4 py-3 text-lg"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

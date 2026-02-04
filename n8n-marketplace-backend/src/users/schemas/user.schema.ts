@@ -20,7 +20,7 @@ export class User {
   @Prop()
   avatarUrl: string;
 
-  @Prop({ default: 'local', enum: ['local', 'google'] })
+  @Prop({ default: 'local', enum: ['local', 'google', 'github'] })
   authProvider: string;
 
   @Prop({ type: [String], default: ['user'], enum: ['user', 'admin'] })
@@ -28,6 +28,9 @@ export class User {
 
   @Prop({ unique: true, sparse: true })
   googleId: string;
+
+  @Prop({ unique: true, sparse: true })
+  githubId: string;
 
   @Prop({ default: false })
   emailVerified: boolean;

@@ -78,6 +78,23 @@ export class AuthService {
     return this.login(user);
   }
 
+  async githubLogin(githubUser: any) {
+    let user = await this.usersService.findByGithubId(githubUser.githubId);
+    if (!user) {
+      // Check by email to link if available
+      if (githubUser.email) {
+        user = await this.usersService.findByEmail(githubUser.email);
+      }
+      
+      if (user) {
+        user = await this.usersService.linkGithubAccount(user._id.toString(), githubUser.githubId);
+      } else {
+        user = await this.usersService.createFromGithub(githubUser);
+      }
+    }
+    return this.login(user);
+  }
+
   async resendVerificationEmail(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {

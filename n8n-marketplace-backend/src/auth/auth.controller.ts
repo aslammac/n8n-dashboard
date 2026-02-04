@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Get, Req, Res, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GithubAuthGuard } from './guards/github-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service'; // Added this import
@@ -49,6 +50,20 @@ export class AuthController {
     const { access_token, refresh_token } = await this.authService.googleLogin(req.user);
     const frontendUrl = this.configService.get<string>('app.frontendUrl');
     // Redirect to frontend with tokens
+    res.redirect(`${frontendUrl}/auth/callback?token=${access_token}&refreshToken=${refresh_token}`);
+  }
+
+  @Get('github')
+  @UseGuards(GithubAuthGuard)
+  async githubAuth(@Req() req: any) {
+    // Guard initiates redirect
+  }
+
+  @Get('github/callback')
+  @UseGuards(GithubAuthGuard)
+  async githubAuthRedirect(@Req() req: any, @Res() res: any) {
+    const { access_token, refresh_token } = await this.authService.githubLogin(req.user);
+    const frontendUrl = this.configService.get<string>('app.frontendUrl');
     // Redirect to frontend with tokens
     res.redirect(`${frontendUrl}/auth/callback?token=${access_token}&refreshToken=${refresh_token}`);
   }

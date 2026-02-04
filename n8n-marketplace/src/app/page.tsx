@@ -3,11 +3,11 @@ import { Metadata } from 'next';
 import HomeClient from '@/components/HomeClient';
 
 export const metadata: Metadata = {
-  title: 'FlowStore | The #1 Marketplace for n8n Workflows',
-  description: 'Discover, download, and share powerful n8n automation workflows. Join the community of automation experts.',
+  title: 'FlowStore | Premium n8n Workflows & Automation Templates',
+  description: 'The premier marketplace for expert-verified n8n automation workflows. Supercharge your productivity with production-ready templates built by automation experts.',
   openGraph: {
-    title: 'FlowStore | The #1 Marketplace for n8n Workflows',
-    description: 'Discover, download, and share powerful n8n automation workflows.',
+    title: 'FlowStore | Premium n8n Workflows Marketplace',
+    description: 'Expert-verified n8n automation workflows. Scale your business with production-ready templates.',
     type: 'website',
   }
 };

@@ -24,6 +24,10 @@ export class UsersService {
     return this.userModel.findOne({ googleId }).exec();
   }
 
+  async findByGithubId(githubId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ githubId }).exec();
+  }
+
   async createFromGoogle(googleData: any): Promise<UserDocument> {
     const newUser = new this.userModel({
       email: googleData.email,
@@ -38,15 +42,38 @@ export class UsersService {
     return newUser.save();
   }
 
+  async createFromGithub(githubData: any): Promise<UserDocument> {
+    const newUser = new this.userModel({
+      email: githubData.email,
+      fullName: githubData.fullName,
+      avatarUrl: githubData.avatarUrl,
+      githubId: githubData.githubId,
+      authProvider: 'github',
+      emailVerified: true,
+      username: githubData.username || (githubData.email ? githubData.email.split('@')[0] : 'user') + Math.floor(Math.random() * 10000),
+      newsletterSubscribed: githubData.newsletterSubscribed || false,
+    });
+    return newUser.save();
+  }
+
   async linkGoogleAccount(userId: string, googleId: string): Promise<UserDocument | null> {
     return this.userModel.findByIdAndUpdate(
       userId,
       {
         googleId,
-        authProvider: 'google', // Or keep 'local' but add googleId? Usually we might want to allow both or switch.
-        // Requirement says: "If email exists from email/password signup → Link Google account to existing user"
-        // And "Users who signed up with Google cannot login with password"
-        // So if linking, we probably just add googleId.
+        authProvider: 'google',
+        emailVerified: true,
+      },
+      { new: true },
+    );
+  }
+
+  async linkGithubAccount(userId: string, githubId: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        githubId,
+        authProvider: 'github',
         emailVerified: true,
       },
       { new: true },
