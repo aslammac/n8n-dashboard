@@ -13,7 +13,7 @@ interface WorkflowCardProps {
 }
 
 export default function WorkflowCard({ workflow }: WorkflowCardProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   // Get unique node types for icons, limit to 4
@@ -27,12 +27,6 @@ export default function WorkflowCard({ workflow }: WorkflowCardProps) {
   const hasAccess = !isPremium || (user && user.subscriptionTier !== 'free');
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      router.push('/auth/login');
-      return;
-    }
-
     if (!hasAccess) {
       e.preventDefault();
       router.push('/plans');
