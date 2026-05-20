@@ -1,10 +1,10 @@
-# ⚡ n8n Automation Marketplace & Dashboard
+# n8n Automation Marketplace & Dashboard
 
 A professional, full-stack monorepo marketplace designed for discovering, sharing, visualising, and monetising **n8n automation workflows**. This repository brings together a high-fidelity **Next.js 16** frontend and an enterprise-ready **NestJS 11** microservices-inspired backend.
 
 ---
 
-## 🏗️ High-Level System Architecture
+## High-Level System Architecture
 
 The ecosystem leverages a decoupled architecture that provides secure authentication, high-performance workflow processing, visual canvas rendering, and AI-assisted workflow analysis.
 
@@ -60,7 +60,7 @@ graph TD
 
 ---
 
-## 🗂️ Workspace & Project Directory Structure
+## Workspace & Project Directory Structure
 
 The workspace is organized into two primary applications alongside a Docker compose infrastructure for orchestration:
 
@@ -95,15 +95,15 @@ n8n-dashboard/
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-### 💻 n8n-marketplace (Frontend)
+### n8n-marketplace (Frontend)
 - **Interactive Workflow Canvas**: Powered by `reactflow` to render interactive JSON-based n8n workflows directly in the browser.
 - **Fuzzy Search**: Implemented client-side with `fuse.js` to enable lightning-fast queries across names, nodes, and categories.
 - **Dynamic Dashboards**: Admin, Creator, and Customer portals built using modern CSS, HSL colors, Tailwind 4, and Lucide React.
 - **State Management**: Client state syncing with `SWR` and real-time alerts via `socket.io-client`.
 
-### ⚙️ n8n-marketplace-backend (Backend)
+### n8n-marketplace-backend (Backend)
 - **Flexible Authentication**: Multiple strategy pipelines using Passport.js, covering local credentials, JWT validation with auto-refresh cycles, and Google/GitHub Social sign-in.
 - **Public & Premium Access Control**: Granular endpoint guards that support unauthenticated reading for public workflows while protecting premium-tier assets.
 - **Asynchronous Task Queueing**: Powered by `BullMQ` + `Redis` to manage heavy operations, background mailing, and metrics tracking without blocking API responses.
@@ -113,7 +113,7 @@ n8n-dashboard/
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Component | Technology | Primary Libraries / Frameworks |
 | :--- | :--- | :--- |
@@ -125,7 +125,7 @@ n8n-dashboard/
 
 ---
 
-## ⚙️ Environment Variables Setup
+## Environment Variables Setup
 
 Before running the applications, configure the environment variables for both the frontend and backend.
 
@@ -184,7 +184,7 @@ NEXT_PUBLIC_ENABLE_EMAIL_LOGIN=false
 
 ---
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Option A: Manual Setup (Local Development)
 
@@ -229,7 +229,7 @@ docker compose up --build -d
 
 ---
 
-## 🧪 Testing and Tooling
+## Testing and Tooling
 
 ### NestJS Backend Tests
 Comprehensive Unit and End-to-End tests are defined in the backend project:
@@ -249,4 +249,3 @@ You can run automated migration/ingestion scripts to quickly seed your marketpla
 cd n8n-marketplace
 npm run import-workflows
 ```
-
