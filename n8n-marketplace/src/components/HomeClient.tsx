@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useDebouncedCallback } from 'use-debounce';
 import { WorkflowMetadata } from '@/types/workflow';
 import WorkflowGrid from '@/components/WorkflowGrid';
 import FilterPanel from '@/components/FilterPanel';
@@ -9,31 +11,103 @@ import { useAuth } from '@/context/AuthContext';
 import { Search, LogIn, LogOut, LayoutDashboard } from 'lucide-react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface HomeClientProps {
   initialWorkflows: any[];
   initialMeta: any;
 }
 
+interface FilterState {
+  category: string;
+  complexity: string;
+  nodeTypes: string[];
+  isPremium: string;
+  sort: string;
+}
+
+const SEARCH_DEBOUNCE_MS = 400;
+
 export default function HomeClient({ initialWorkflows, initialMeta }: HomeClientProps) {
   const { user, isAuthenticated, logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    category: '',
-    complexity: '',
-    nodeTypes: [] as string[],
-    isPremium: '',
-    sort: ''
-  });
-  
-  // Pagination State
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // All search/filter/pagination state lives in the URL so it survives
+  // client navigation (open a workflow, hit Back) and is shareable.
+  const urlSearch = searchParams.get('q') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  const filters: FilterState = {
+    category: searchParams.get('category') ?? '',
+    complexity: searchParams.get('complexity') ?? '',
+    nodeTypes: searchParams.get('tags') ? searchParams.get('tags')!.split(',') : [],
+    isPremium: searchParams.get('isPremium') ?? '',
+    sort: searchParams.get('sort') ?? '',
+  };
+
+  // Local mirror of the search box for instant typing feedback; the URL (and
+  // therefore the request) is only updated after the debounce settles.
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  useEffect(() => {
+    setSearchInput(urlSearch);
+  }, [urlSearch]);
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | null>, resetPage = true) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (resetPage) params.delete('page');
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === '') params.delete(key);
+        else params.set(key, value);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
+  const commitSearch = useDebouncedCallback((value: string) => {
+    updateParams({ q: value || null });
+  }, SEARCH_DEBOUNCE_MS);
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    commitSearch(value);
+  };
+
+  const submitSearchNow = () => {
+    commitSearch.cancel();
+    updateParams({ q: searchInput || null });
+  };
+
+  const handleFilterChange = (next: FilterState) => {
+    updateParams({
+      category: next.category || null,
+      complexity: next.complexity || null,
+      tags: next.nodeTypes.length > 0 ? next.nodeTypes.join(',') : null,
+      isPremium: next.isPremium || null,
+      sort: next.sort || null,
+    });
+  };
+
+  const goToPage = (nextPage: number) => {
+    updateParams({ page: nextPage > 1 ? String(nextPage) : null }, false);
+  };
+
+  const hasActiveQuery =
+    !!urlSearch ||
+    !!filters.category ||
+    !!filters.complexity ||
+    filters.nodeTypes.length > 0 ||
+    !!filters.isPremium ||
+    !!filters.sort;
 
   // Construct query string for SWR key
   const queryString = new URLSearchParams({
     page: page.toString(),
     limit: '9',
-    ...(searchQuery && { search: searchQuery }),
+    ...(urlSearch && { search: urlSearch }),
     ...(filters.category && { category: filters.category }),
     ...(filters.complexity && { complexity: filters.complexity }),
     ...(filters.nodeTypes.length > 0 && { tags: filters.nodeTypes.join(',') }),
@@ -41,12 +115,12 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
     ...(filters.sort && { sort: filters.sort }),
   }).toString();
 
-  // Use SWR for client-side updates (filtering, pagination)
-  // Fallback to initial data if query matches initial state
-  const { data, error, isLoading } = useSWR(`/workflows?${queryString}`, fetcher, {
-    fallbackData: (page === 1 && !searchQuery && !filters.category && !filters.complexity && filters.nodeTypes.length === 0 && !filters.isPremium && !filters.sort) 
-      ? { data: initialWorkflows, meta: initialMeta } 
-      : undefined
+  const { data, isLoading } = useSWR(`/workflows?${queryString}`, fetcher, {
+    keepPreviousData: true,
+    fallbackData:
+      page === 1 && !hasActiveQuery
+        ? { data: initialWorkflows, meta: initialMeta }
+        : undefined,
   });
 
   const workflows = data?.data ? data.data.map((w: any) => ({
@@ -73,50 +147,45 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
 
   const meta = data?.meta || initialMeta;
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, filters]);
-
   return (
-    <div className="min-h-screen bg-[#0f0f11] font-sans text-gray-100 relative overflow-hidden">
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px]" />
-      </div>
-
+    <div className="min-h-screen bg-bg text-fg">
       {/* Header */}
-      <header className="glass-panel sticky top-0 z-50 border-b-0">
-        <div className="container mx-auto px-6 py-2 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
-                FlowStore
-              </h1>
-            </div>
-          
-          <div className="flex items-center space-x-4">
+      <header className="glass-panel sticky top-0 z-50">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold tracking-tight">
+            <span className="text-primary">flow</span><span className="">store</span><span className="text-fg-subtle font-light">.dev</span>
+          </Link>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* <Link
+              href="/coming-soon"
+              className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-fg-muted hover:text-fg transition-colors"
+            >
+              Pricing
+            </Link> */}
+            <ThemeToggle />
             {isAuthenticated ? (
               <>
                 {user?.roles?.includes('admin') && (
-                  <Link 
+                  <Link
                     href="/admin"
-                    className="px-5 py-2.5 glass-card text-white text-sm font-medium rounded-full hover:bg-white/10 transition-all flex items-center"
+                    className="px-3.5 py-2 border border-border bg-surface text-sm font-medium rounded-full hover:bg-surface-2 transition-colors flex items-center"
                   >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    <LayoutDashboard className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">Admin</span>
                   </Link>
                 )}
-                
-                <div className="flex items-center space-x-3 border-l border-gray-700/50 pl-4">
-                  <div className="flex flex-col items-end hidden sm:flex">
-                    <span className="text-sm font-medium text-white">{user?.firstName}</span>
-                    <span className="text-xs text-gray-400 capitalize">{user?.subscriptionTier}</span>
+                <div className="flex items-center gap-3 border-l border-border pl-3">
+                  <div className="hidden sm:flex flex-col items-end leading-tight">
+                    <span className="text-sm font-medium">{user?.firstName}</span>
+                    <span className="text-xs text-fg-subtle capitalize">
+                      {user?.subscriptionTier}
+                    </span>
                   </div>
                   <button
                     onClick={logout}
-                    className="p-2 text-gray-400 hover:text-white transition-colors hover:bg-white/5 rounded-lg"
-                    title="Sign Out"
+                    title="Sign out"
+                    className="p-2 text-fg-muted hover:text-fg hover:bg-surface-2 rounded-lg transition-colors"
                   >
                     <LogOut className="w-5 h-5" />
                   </button>
@@ -125,7 +194,7 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
             ) : (
               <Link
                 href="/auth/login"
-                className="px-5 py-2.5 glass-card text-white text-sm font-medium rounded-xl hover:bg-white/10 transition-all flex items-center"
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-primary-fg text-sm font-medium rounded-lg transition-colors flex items-center"
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign In
@@ -135,80 +204,86 @@ export default function HomeClient({ initialWorkflows, initialMeta }: HomeClient
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="relative pt-20 pb-24 overflow-hidden">
-        <div className="container mx-auto px-6 relative z-10 text-center">
-          <div className="inline-flex items-center px-3 py-1 rounded-full glass-panel text-xs font-medium text-blue-400 mb-8 border border-blue-500/20">
-            <span className="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span>
-            Expert-verified n8n templates now available
-          </div>
-          
-          <h2 className="text-5xl md:text-6xl font-medium text-white mb-6 tracking-tight leading-tight">
-            Supercharge your <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-600">n8n automation stack</span>
-          </h2>
-          
-          <p className="text-xl font-extralight text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Discover hundreds of production-ready n8n workflows. 
-            Built by the community, vetted by experts, ready to deploy in seconds.
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-40"
+          style={{
+            background:
+              'radial-gradient(600px circle at 20% 0%, var(--primary-soft), transparent 60%), radial-gradient(500px circle at 90% 20%, color-mix(in srgb, var(--grad-to) 12%, transparent), transparent 60%)',
+          }}
+        />
+        <div className="container mx-auto px-6 relative z-10 pt-20 pb-16 text-center">
+          <span className="inline-flex items-center px-3 py-1 rounded-full bg-surface border border-border text-xs font-medium text-fg-muted mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2" />
+            Production-ready n8n workflows
+          </span>
+
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight leading-[1.1] mb-5">
+            Ship automations, <br className="hidden sm:block" />
+            <span className="text-gradient">Not</span> boilerplate
+          </h1>
+
+          <p className="text-lg text-fg-muted mb-10 max-w-xl mx-auto leading-relaxed">
+            Production-ready n8n workflows, built by the community and vetted by
+            experts. Import in seconds.
           </p>
 
-          <div className="max-w-2xl mx-auto relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative flex items-center glass-panel rounded-full p-2 pl-6 ">
-              <Search className="w-6 h-6 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search for workflows (e.g., Shopify, Slack, CRM)..."
-                className="w-full bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 focus:outline-0 px-4 py-3 text-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors">
-                Search
-              </button>
-            </div>
+          <div className="max-w-xl mx-auto flex items-center gap-2 bg-card border border-border rounded-full p-2 pl-4 focus-within:border-primary/60 transition-colors">
+            <Search className="w-5 h-5 text-fg-subtle shrink-0" />
+            <input
+              type="text"
+              placeholder="Search Shopify, Slack, CRM…"
+              className="w-full bg-transparent border-none text-fg placeholder:text-fg-subtle focus:outline-none px-2 py-2"
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitSearchNow();
+              }}
+            />
+            <button
+              onClick={submitSearchNow}
+              className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-primary-fg font-medium rounded-full transition-colors shrink-0"
+            >
+              Search
+            </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <main className="container mx-auto px-6 pb-24 relative z-10">
-        <div className="mb-12">
-          <FilterPanel 
-            workflows={workflows} 
-            filters={filters} 
-            onFilterChange={setFilters} 
-            className="glass-panel p-4 rounded-2xl"
+      <main className="container mx-auto px-6 py-12">
+        <div className="mb-8">
+          <FilterPanel
+            workflows={workflows}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            className="bg-card border border-border p-4 rounded-2xl"
           />
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="glass-card rounded-2xl h-[400px] animate-pulse bg-white/5"></div>
-            ))}
-          </div>
+          <WorkflowGrid workflows={[]} loading />
         ) : (
           <>
             <WorkflowGrid workflows={workflows} />
 
-            {/* Pagination */}
             {meta && meta.totalPages > 1 && (
-              <div className="mt-16 flex justify-center space-x-2">
+              <div className="mt-14 flex items-center justify-center gap-2">
                 <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => goToPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 glass-card rounded-lg text-white disabled:opacity-50 hover:bg-white/10 transition-colors"
+                  className="px-4 py-2 border border-border bg-surface rounded-lg text-sm disabled:opacity-40 hover:bg-surface-2 transition-colors"
                 >
                   Previous
                 </button>
-                <div className="flex items-center px-4">
-                  <span className="text-gray-400">Page {page} of {meta.totalPages}</span>
-                </div>
+                <span className="px-4 text-sm text-fg-muted">
+                  Page {page} of {meta.totalPages}
+                </span>
                 <button
-                  onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                  onClick={() => goToPage(Math.min(meta.totalPages, page + 1))}
                   disabled={page === meta.totalPages}
-                  className="px-4 py-2 glass-card rounded-lg text-white disabled:opacity-50 hover:bg-white/10 transition-colors"
+                  className="px-4 py-2 border border-border bg-surface rounded-lg text-sm disabled:opacity-40 hover:bg-surface-2 transition-colors"
                 >
                   Next
                 </button>

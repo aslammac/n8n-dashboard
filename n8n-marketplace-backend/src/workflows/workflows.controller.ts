@@ -6,7 +6,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 
 import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 
 @Controller('workflows')
 export class WorkflowsController {
@@ -60,20 +59,28 @@ export class WorkflowsController {
   @Get(':slug')
   async findOne(@Param('slug') slug: string, @Request() req: any, @Ip() ip: string) {
     const workflow = await this.workflowsService.findOne(slug);
-    
+
     // Increment views with IP check
     await this.workflowsService.incrementViews(workflow._id.toString(), ip);
-    
+
+    // Premium workflows: the listing (title, description, price, node list) is
+    // public so people can decide to buy, but the workflowJson is withheld until
+    // the viewer has access. Actual purchase entitlement is enforced on download.
     if (workflow.isPremium) {
       const user = req.user;
-      if (!user) {
-        throw new UnauthorizedException('This is a premium workflow. Please log in to view details.');
-      }
-      if (user.subscriptionTier === 'free') {
-        throw new ForbiddenException('This is a premium workflow. Please upgrade your plan to view details.');
+      const creatorId = String((workflow.creatorId as any)?._id ?? workflow.creatorId);
+      const hasAccess =
+        !!user &&
+        ((user.subscriptionTier && user.subscriptionTier !== 'free') ||
+          user.userId === creatorId ||
+          (user.roles ?? []).includes('admin'));
+
+      if (!hasAccess) {
+        const plain = workflow.toObject();
+        return { ...plain, workflowJson: null, locked: true };
       }
     }
-    
+
     return workflow;
   }
 

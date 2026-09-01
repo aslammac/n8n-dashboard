@@ -3,8 +3,12 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import VerificationBanner from "@/components/VerificationBanner";
 import NotificationWrapper from "@/components/NotificationWrapper";
+
+// Applies the persisted theme before first paint to avoid a flash.
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`;
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,9 +35,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <Script 
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script
           src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js" 
           strategy="beforeInteractive" 
         />
@@ -47,13 +52,15 @@ export default function RootLayout({
           strategy="afterInteractive" 
         />
       </head>
-      <body className={inter.className}>
-        <AuthProvider>
-          <NotificationWrapper>
-            <VerificationBanner />
-            {children}
-          </NotificationWrapper>
-        </AuthProvider>
+      <body className={`${inter.className} bg-bg text-fg`}>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationWrapper>
+              <VerificationBanner />
+              {children}
+            </NotificationWrapper>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

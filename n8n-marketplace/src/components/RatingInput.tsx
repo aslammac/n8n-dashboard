@@ -36,15 +36,15 @@ export default function RatingInput({ currentRating = 0, onRate, disabled = fals
           }`}
         >
           <Star
-            className={`w-6 h-6 ${
+            className={`w-5 h-5 ${
               star <= (hoverRating || currentRating)
-                ? 'fill-yellow-500 text-yellow-500'
-                : 'text-gray-600'
+                ? 'fill-amber-500 text-amber-500'
+                : 'text-fg-subtle'
             }`}
           />
         </button>
       ))}
-      {isSubmitting && <span className="text-xs text-gray-500 ml-2">Submitting...</span>}
+      {isSubmitting && <span className="text-xs text-fg-subtle ml-2">Submitting...</span>}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export class User {
 
   @Prop({
     default: 'free',
-    enum: ['free', 'starter', 'pro', 'business'],
+    enum: ['free', 'starter', 'pro', 'business', 'lifetime'],
   })
   subscriptionTier: string;
 

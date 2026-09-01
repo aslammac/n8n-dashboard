@@ -10,8 +10,14 @@ export class Purchase {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: User;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Workflow', required: true })
-  workflowId: Workflow;
+  // What the payment unlocks. 'lifetime' = permanent full access;
+  // 'subscription' = a Pro checkout; 'workflow' kept for legacy rows.
+  @Prop({ enum: ['lifetime', 'subscription', 'workflow'], default: 'lifetime' })
+  kind: string;
+
+  // Only set for legacy per-workflow purchases.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Workflow', required: false, default: null })
+  workflowId: Workflow | null;
 
   @Prop({ required: true })
   amount: number;
@@ -25,17 +31,11 @@ export class Purchase {
   @Prop()
   stripePaymentIntentId: string;
 
+  @Prop({ index: true })
+  stripeCheckoutSessionId: string;
+
   @Prop({ enum: ['pending', 'completed', 'failed', 'refunded'], default: 'pending' })
   status: string;
-
-  @Prop()
-  creatorPayout: number;
-
-  @Prop()
-  platformFee: number;
-
-  @Prop({ default: false })
-  creatorPaidOut: boolean;
 
   @Prop()
   completedAt: Date;

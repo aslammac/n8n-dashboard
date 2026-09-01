@@ -84,6 +84,46 @@ export class UsersService {
     await this.userModel.findByIdAndUpdate(userId, { lastLoginAt: new Date() });
   }
 
+  async setStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { stripeCustomerId });
+  }
+
+  findByStripeCustomerId(stripeCustomerId: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ stripeCustomerId }).exec();
+  }
+
+  async applySubscription(
+    userId: string,
+    data: {
+      tier: string;
+      status: string;
+      expiresAt?: Date | null;
+      stripeSubscriptionId?: string;
+    },
+  ): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      subscriptionTier: data.tier,
+      subscriptionStatus: data.status,
+      subscriptionExpiresAt: data.expiresAt ?? null,
+    });
+  }
+
+  async grantLifetime(userId: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      subscriptionTier: 'lifetime',
+      subscriptionStatus: 'active',
+      subscriptionExpiresAt: null,
+    });
+  }
+
+  async downgradeToFree(userId: string): Promise<void> {
+    // Never downgrade someone who bought lifetime access.
+    await this.userModel.updateOne(
+      { _id: userId, subscriptionTier: { $ne: 'lifetime' } },
+      { subscriptionTier: 'free', subscriptionStatus: 'canceled' },
+    );
+  }
+
   async verifyEmail(token: string): Promise<UserDocument | null> {
     const user = await this.userModel.findOne({ verificationToken: token }).exec();
     if (user) {

@@ -40,6 +40,9 @@ async function getWorkflow(id: string): Promise<WorkflowMetadata | null> {
       nodeCount: apiData.nodes?.length || 0,
       complexity: apiData.complexity || 'intermediate',
       setupSteps: apiData.setupSteps || [],
+      price: apiData.price ?? 0,
+      currency: apiData.currency ?? 'USD',
+      locked: apiData.locked ?? false,
       workflow: apiData.workflowJson,
     };
   } catch (error) {

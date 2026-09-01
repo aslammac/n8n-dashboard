@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Req,
+  UseGuards,
+  Request,
+  Headers,
+  BadRequestException,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -7,9 +16,37 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Post('checkout')
-  async checkout(@Request() req: any, @Body() body: any) {
-    return this.paymentsService.createPurchase(req.user.userId, body.workflowId, body.amount);
+  @Post('subscribe')
+  async subscribe(@Request() req: any) {
+    return this.paymentsService.createSubscriptionCheckout(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('lifetime')
+  async lifetime(@Request() req: any) {
+    return this.paymentsService.createLifetimeCheckout(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('portal')
+  async portal(@Request() req: any) {
+    return this.paymentsService.createPortalSession(req.user.userId);
+  }
+
+  // Stripe calls this directly — no auth guard; verified by signature instead.
+  // The raw body is provided by the express.raw() middleware in main.ts.
+  @Post('webhook')
+  async webhook(@Req() req: any, @Headers('stripe-signature') signature: string) {
+    if (!signature) {
+      throw new BadRequestException('Missing stripe-signature header.');
+    }
+    return this.paymentsService.handleWebhook(req.body, signature);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('billing')
+  async billing(@Request() req: any) {
+    return this.paymentsService.getBillingStatus(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)

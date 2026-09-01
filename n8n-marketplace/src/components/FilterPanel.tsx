@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WorkflowMetadata } from '@/types/workflow';
-import { Search, Filter, X, ChevronDown, Check, ArrowUpDown, DollarSign } from 'lucide-react';
+import { ChevronDown, Check, ArrowUpDown } from 'lucide-react';
 
 interface FilterState {
   category: string;
@@ -18,89 +18,103 @@ interface FilterPanelProps {
 }
 
 const CATEGORIES = [
-  "AI & ML",
-  "Marketing",
-  "Sales",
-  "Data Processing",
-  "Productivity",
-  "Integration",
-  "Communication",
-  "E-commerce",
-  "Finance",
-  "HR",
-  "Other"
+  'AI & ML',
+  'Marketing',
+  'Sales',
+  'Data Processing',
+  'Productivity',
+  'Integration',
+  'Communication',
+  'E-commerce',
+  'Finance',
+  'HR',
+  'Other',
 ];
 
-export default function FilterPanel({ workflows, filters, onFilterChange, className = '' }: FilterPanelProps) {
+const SEGMENT_BASE =
+  'px-3 py-1.5 rounded-md text-xs font-medium transition-colors';
+
+export default function FilterPanel({
+  filters,
+  onFilterChange,
+  className = '',
+}: FilterPanelProps) {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
       }
-      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target as Node)
+      ) {
         setIsSortOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleCategorySelect = (category: string) => {
-    onFilterChange({ ...filters, category: category === filters.category ? '' : category });
+  const selectCategory = (category: string) => {
+    onFilterChange({
+      ...filters,
+      category: category === filters.category ? '' : category,
+    });
     setIsCategoryOpen(false);
   };
 
-  const handleSortSelect = (sort: string) => {
+  const selectSort = (sort: string) => {
     onFilterChange({ ...filters, sort });
     setIsSortOpen(false);
   };
 
+  const sortLabel =
+    filters.sort === 'downloads'
+      ? 'Most Popular'
+      : filters.sort === 'rating'
+        ? 'Top Rated'
+        : 'Newest';
+
   return (
-    <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 ${className}`}>
-      
+    <div
+      className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${className}`}
+    >
       <div className="flex flex-wrap items-center gap-3">
-        {/* Category Dropdown */}
+        {/* Category */}
         <div className="relative" ref={dropdownRef}>
           <button
-            onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-              filters.category 
-                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-900/20' 
-                : 'bg-[#1c1c21] border-gray-800 text-gray-300 hover:border-gray-700 hover:text-white'
+            onClick={() => setIsCategoryOpen((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              filters.category
+                ? 'bg-primary border-primary text-primary-fg'
+                : 'bg-surface border-border text-fg-muted hover:text-fg hover:border-border-strong'
             }`}
           >
             <span>{filters.category || 'All Categories'}</span>
-            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCategoryOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
+            />
           </button>
 
           {isCategoryOpen && (
-            <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c1c21] border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute top-full left-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50">
               <div className="max-h-80 overflow-y-auto py-1 custom-scrollbar">
-                <button
-                  onClick={() => handleCategorySelect('')}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                    filters.category === '' ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <span>All Categories</span>
-                  {filters.category === '' && <Check className="w-4 h-4" />}
-                </button>
-                
-                {CATEGORIES.map((category) => (
+                {['', ...CATEGORIES].map((category) => (
                   <button
-                    key={category}
-                    onClick={() => handleCategorySelect(category)}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                      filters.category === category ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    key={category || 'all'}
+                    onClick={() => selectCategory(category)}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                      filters.category === category
+                        ? 'bg-primary-soft text-primary'
+                        : 'text-fg-muted hover:bg-surface-2 hover:text-fg'
                     }`}
                   >
-                    <span>{category}</span>
+                    <span>{category || 'All Categories'}</span>
                     {filters.category === category && <Check className="w-4 h-4" />}
                   </button>
                 ))}
@@ -109,20 +123,20 @@ export default function FilterPanel({ workflows, filters, onFilterChange, classN
           )}
         </div>
 
-        {/* Price Filter */}
-        <div className="flex bg-[#1c1c21] rounded-lg border border-gray-800 p-1">
+        {/* Price segment */}
+        <div className="flex bg-surface rounded-lg border border-border p-1">
           {[
             { label: 'All', value: '' },
             { label: 'Free', value: 'false' },
-            { label: 'Premium', value: 'true' }
+            { label: 'Premium', value: 'true' },
           ].map((option) => (
             <button
               key={option.label}
               onClick={() => onFilterChange({ ...filters, isPremium: option.value })}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              className={`${SEGMENT_BASE} ${
                 filters.isPremium === option.value
-                  ? 'bg-gray-700 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-surface-2 text-fg'
+                  : 'text-fg-subtle hover:text-fg'
               }`}
             >
               {option.label}
@@ -130,16 +144,21 @@ export default function FilterPanel({ workflows, filters, onFilterChange, classN
           ))}
         </div>
 
-        {/* Complexity Filter */}
-        <div className="flex bg-white/5 rounded-xl border border-white/10 p-1 hidden sm:flex">
+        {/* Complexity segment */}
+        <div className="hidden sm:flex bg-surface rounded-lg border border-border p-1">
           {['beginner', 'intermediate', 'advanced'].map((level) => (
             <button
               key={level}
-              onClick={() => onFilterChange({ ...filters, complexity: filters.complexity === level ? '' : level })}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+              onClick={() =>
+                onFilterChange({
+                  ...filters,
+                  complexity: filters.complexity === level ? '' : level,
+                })
+              }
+              className={`${SEGMENT_BASE} capitalize ${
                 filters.complexity === level
-                  ? 'bg-purple-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-surface-2 text-fg'
+                  : 'text-fg-subtle hover:text-fg'
               }`}
             >
               {level}
@@ -148,37 +167,40 @@ export default function FilterPanel({ workflows, filters, onFilterChange, classN
         </div>
       </div>
 
-      {/* Sort Dropdown */}
+      {/* Sort */}
       <div className="relative" ref={sortDropdownRef}>
         <button
-          onClick={() => setIsSortOpen(!isSortOpen)}
-          className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+          onClick={() => setIsSortOpen((v) => !v)}
+          className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm text-fg-muted hover:text-fg hover:border-border-strong transition-colors"
         >
           <ArrowUpDown className="w-4 h-4" />
-          <span>Sort by: <span className="text-white font-medium capitalize">{filters.sort || 'Newest'}</span></span>
+          <span>
+            Sort: <span className="text-fg font-medium">{sortLabel}</span>
+          </span>
         </button>
         {isSortOpen && (
-          <div className="absolute top-full right-0 mt-2 w-40 glass-card rounded-xl shadow-xl overflow-hidden z-50">
+          <div className="absolute top-full right-0 mt-2 w-44 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50">
             {[
               { label: 'Newest', value: '' },
               { label: 'Most Popular', value: 'downloads' },
-              { label: 'Top Rated', value: 'rating' }
+              { label: 'Top Rated', value: 'rating' },
             ].map((option) => (
               <button
                 key={option.value}
-                onClick={() => handleSortSelect(option.value)}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-white/10 transition-colors flex items-center justify-between ${
-                  (filters.sort === option.value || (!filters.sort && option.value === '')) ? 'text-blue-400 bg-blue-500/10' : 'text-gray-300'
+                onClick={() => selectSort(option.value)}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                  filters.sort === option.value
+                    ? 'bg-primary-soft text-primary'
+                    : 'text-fg-muted hover:bg-surface-2 hover:text-fg'
                 }`}
               >
                 <span>{option.label}</span>
-                {(filters.sort === option.value || (!filters.sort && option.value === '')) && <Check className="w-3 h-3" />}
+                {filters.sort === option.value && <Check className="w-3.5 h-3.5" />}
               </button>
             ))}
           </div>
         )}
       </div>
-
     </div>
   );
 }

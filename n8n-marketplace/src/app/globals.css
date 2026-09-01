@@ -1,45 +1,116 @@
 @import "tailwindcss";
 
+/* Toggle dark mode via a `.dark` class on <html> (set by ThemeProvider). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 15, 15, 17;
-    --background-end-rgb: 15, 15, 17;
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.05);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --primary-gradient: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
-    --secondary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  }
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --surface-2: #eceef2;
+  --card: #ffffff;
+  --border: #e3e6eb;
+  --border-strong: #d3d8e0;
+  --fg: #0f1115;
+  --fg-muted: #566072;
+  --fg-subtle: #8b95a5;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-fg: #ffffff;
+  --primary-soft: rgba(79, 70, 229, 0.1);
+  --ring: rgba(79, 70, 229, 0.35);
+  --success: #16a34a;
+  --warning: #b45309;
+  --danger: #dc2626;
+  --grad-from: #6366f1;
+  --grad-to: #ec4899;
+}
 
-  body {
-    color: rgb(var(--foreground-rgb));
-    background: linear-gradient(
-      to bottom,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb))
-    );
-    min-height: 100vh;
-  }
+.dark {
+  --bg: #0a0b0e;
+  --surface: #121419;
+  --surface-2: #1a1d23;
+  --card: #131519;
+  --border: #262a31;
+  --border-strong: #333842;
+  --fg: #f2f4f7;
+  --fg-muted: #9aa4b2;
+  --fg-subtle: #6b7480;
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-fg: #ffffff;
+  --primary-soft: rgba(99, 102, 241, 0.14);
+  --ring: rgba(99, 102, 241, 0.45);
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --grad-from: #818cf8;
+  --grad-to: #f472b6;
+}
 
-  .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-  }
+/* Expose the tokens as Tailwind color utilities: bg-bg, text-fg, border-border … */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
 
-  .glass-card {
-    background: rgba(28, 28, 33, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-  }
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
 
-  .glass-card:hover {
-    background: rgba(28, 28, 33, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, var(--grad-from), var(--grad-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.glass-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}

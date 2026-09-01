@@ -53,6 +53,9 @@ export interface WorkflowMetadata {
   complexity: 'beginner' | 'intermediate' | 'advanced';
   setupSteps?: string[];
   isPremium?: boolean;
+  price?: number;
+  currency?: string;
+  locked?: boolean; // premium workflow the current viewer has not purchased
   workflow?: N8nWorkflowData;
 }
 export interface PaginatedResponse<T> {

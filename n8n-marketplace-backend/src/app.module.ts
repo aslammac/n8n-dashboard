@@ -12,9 +12,10 @@ import { WorkflowsModule } from './workflows/workflows.module';
 import { DownloadsModule } from './downloads/downloads.module';
 import { MailModule } from './mail/mail.module';
 import mailConfig from './config/mail.config';
+import stripeConfig from './config/stripe.config';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { BullModule } from '@nestjs/bullmq';
-import redisConfig from './config/redis.config';
+import redisConfig, { isRedisEnabled } from './config/redis.config';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CacheModule } from '@nestjs/cache-manager';
 
@@ -27,24 +28,29 @@ import { APP_GUARD } from '@nestjs/core';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, appConfig, mailConfig, redisConfig],
+      load: [databaseConfig, jwtConfig, appConfig, mailConfig, redisConfig, stripeConfig],
       envFilePath: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
     }),
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('redis.host'),
-          port: configService.get('redis.port'),
-          password: configService.get('redis.password'),
-          username: configService.get('redis.username'),
-      //     tls: {
-      //   rejectUnauthorized: false, // Required for Upstash's managed certificates
-      // },
-        },
-      }),
-      inject: [ConfigService],
-    }),
+    // Redis-backed job queue. Skipped entirely when REDIS_ENABLED=false.
+    ...(isRedisEnabled()
+      ? [
+          BullModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+              connection: {
+                host: configService.get('redis.host'),
+                port: configService.get('redis.port'),
+                password: configService.get('redis.password'),
+                username: configService.get('redis.username'),
+                //     tls: {
+                //   rejectUnauthorized: false, // Required for Upstash's managed certificates
+                // },
+              },
+            }),
+            inject: [ConfigService],
+          }),
+        ]
+      : []),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

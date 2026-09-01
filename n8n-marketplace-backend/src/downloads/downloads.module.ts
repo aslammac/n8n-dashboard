@@ -5,12 +5,14 @@ import { DownloadsController } from './downloads.controller';
 import { Download, DownloadSchema } from './schemas/download.schema';
 import { UsersModule } from '../users/users.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Download.name, schema: DownloadSchema }]),
     UsersModule,
     WorkflowsModule,
+    PaymentsModule,
   ],
   controllers: [DownloadsController],
   providers: [DownloadsService],

@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  Optional,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Workflow, WorkflowDocument } from './schemas/workflow.schema';
@@ -10,16 +16,21 @@ import type { Cache } from 'cache-manager'; // Use type import
 
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class WorkflowsService {
+  private readonly logger = new Logger(WorkflowsService.name);
+
   constructor(
     @InjectModel(Workflow.name) private workflowModel: Model<WorkflowDocument>,
     @InjectModel(Rating.name) private ratingModel: Model<RatingDocument>,
     private usersService: UsersService,
     private workflowAiService: WorkflowAiService,
-    @InjectQueue('workflows') private workflowsQueue: Queue,
+    // Absent when REDIS_ENABLED=false — bulk uploads then run inline.
+    @Optional() @InjectQueue('workflows') private workflowsQueue: Queue | undefined,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private notificationsGateway: NotificationsGateway,
   ) {}
 
   // ... (existing methods)
@@ -84,12 +95,63 @@ export class WorkflowsService {
   }
 
   async processBulkUpload(workflows: any[], userId: string) {
-    console.log(`Adding bulk upload job for user ${userId} with ${workflows.length} workflows`);
-    
-    await this.workflowsQueue.add('bulk-upload', {
-      workflows,
-      userId,
+    if (this.workflowsQueue) {
+      this.logger.log(
+        `Queuing bulk upload for user ${userId} (${workflows.length} workflows)`,
+      );
+      await this.workflowsQueue.add('bulk-upload', { workflows, userId });
+      return;
+    }
+
+    // Redis disabled: process synchronously in-process.
+    this.logger.log(
+      `Redis disabled — running bulk upload inline for user ${userId} (${workflows.length} workflows)`,
+    );
+    await this.executeBulkUpload(workflows, userId);
+  }
+
+  /**
+   * Runs the actual bulk import loop. Called by the BullMQ processor when Redis
+   * is enabled, or directly by processBulkUpload when it is not.
+   */
+  async executeBulkUpload(
+    workflows: any[],
+    userId: string,
+    onProgress?: (percent: number) => Promise<unknown>,
+  ): Promise<{ successCount: number; failCount: number }> {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const workflowData of workflows) {
+      try {
+        await this.create(workflowData, userId);
+        successCount++;
+      } catch (error) {
+        this.logger.error(
+          `Failed to upload workflow in bulk: ${(error as Error).message}`,
+        );
+        failCount++;
+      }
+
+      if (onProgress) {
+        const progress = Math.round(
+          ((successCount + failCount) / workflows.length) * 100,
+        );
+        await onProgress(progress);
+      }
+    }
+
+    this.logger.log(
+      `Bulk upload complete for user ${userId}. Success: ${successCount}, Failed: ${failCount}`,
+    );
+
+    this.notificationsGateway.sendNotificationToUser(userId, 'upload-complete', {
+      successCount,
+      failCount,
+      total: workflows.length,
     });
+
+    return { successCount, failCount };
   }
 
   async togglePremium(id: string): Promise<WorkflowDocument | null> {

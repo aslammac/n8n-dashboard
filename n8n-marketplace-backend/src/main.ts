@@ -1,13 +1,20 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, raw } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  const apiPrefix = configService.get<string>('app.apiPrefix') || 'api/v1';
+
+  // Stripe webhooks need the raw, unparsed body for signature verification.
+  // This must be registered before the JSON body parser.
+  app.use(`/${apiPrefix}/payments/webhook`, raw({ type: '*/*' }));
 
   // Increase body limit
   app.use(json({ limit: '50mb' }));
@@ -34,7 +41,7 @@ async function bootstrap() {
   });
 
   // API Prefix
-  app.setGlobalPrefix(configService.get<string>('app.apiPrefix') || 'api/v1');
+  app.setGlobalPrefix(apiPrefix);
 
   // Swagger Documentation
   const config = new DocumentBuilder()

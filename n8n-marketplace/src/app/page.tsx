@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import HomeClient from '@/components/HomeClient';
 
@@ -37,9 +37,11 @@ export default async function Home() {
   // HomeClient expects this structure for initial data
 
   return (
-    <HomeClient 
-      initialWorkflows={data.data || []} 
-      initialMeta={data.meta || {}} 
-    />
+    <Suspense fallback={null}>
+      <HomeClient
+        initialWorkflows={data.data || []}
+        initialMeta={data.meta || {}}
+      />
+    </Suspense>
   );
 }

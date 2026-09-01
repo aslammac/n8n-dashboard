@@ -1,27 +1,77 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, Tag, Share2, LogIn, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  ArrowLeft,
+  Download,
+  Tag,
+  Share2,
+  LogIn,
+  LogOut,
+  Sparkles,
+  Star,
+  Lock,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { WorkflowMetadata } from '@/types/workflow';
 import WorkflowPreview from '@/components/WorkflowPreview';
+import { getNodeIcon } from '@/utils/nodeIcons';
 import api from '@/lib/api';
 import RatingInput from '@/components/RatingInput';
-import { mutate } from 'swr';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface WorkflowDetailsProps {
   workflow: WorkflowMetadata;
 }
 
+type ApiError = { response?: { status?: number; data?: { message?: string } } };
+
 export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [showAllNodes, setShowAllNodes] = useState(false);
   const INITIAL_NODE_LIMIT = 5;
 
+  const [downloading, setDownloading] = useState(false);
+  // Premium access is account-level (Pro subscription or lifetime), not per
+  // workflow. The SSR fetch is unauthenticated, so premium always arrives
+  // locked — re-check the signed-in user's billing on the client.
+  const [hasAccess, setHasAccess] = useState(!workflow?.locked);
+
+  const isPremium = !!workflow?.isPremium;
+  const locked = isPremium && !hasAccess;
+
+  // Return to the previous list view (keeps its search/filter/page in the URL);
+  // fall back to home when opened directly with no history.
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+
+  useEffect(() => {
+    if (!isPremium || !isAuthenticated || !workflow?.locked) return;
+    let cancelled = false;
+    api
+      .get('/payments/billing')
+      .then(({ data }) => {
+        if (!cancelled && data?.hasPremium) setHasAccess(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, workflow?.id]);
+
   const handleDownload = async () => {
-    if (!workflow) return;
+    if (!workflow || downloading) return;
+    setDownloading(true);
     try {
       const response = await api.post(`/downloads/${workflow.id}`);
       const jsonString = JSON.stringify(response.data, null, 2);
@@ -36,7 +86,17 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Download failed:', error);
-      alert('Download failed. Please try again.');
+      const status = (error as ApiError)?.response?.status;
+      const serverMessage = (error as ApiError)?.response?.data?.message;
+      if (status === 401) {
+        alert(serverMessage || 'Please sign in to download this workflow.');
+      } else if (status === 403) {
+        alert(serverMessage || 'Download limit reached. Sign in to keep downloading.');
+      } else {
+        alert('Download failed. Please try again.');
+      }
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -52,57 +112,51 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
     if (!workflow || !isAuthenticated) return;
     try {
       await api.post(`/workflows/${workflow.id}/rate`, { rating });
-      // We might want to trigger a server revalidation here or just alert success
-      // Since this is a server component parent, swr mutate won't affect the server props directly
-      // But for now, let's just alert or assume optimistic UI if we had local state for rating
-      window.location.reload(); // Simple way to refresh data for now
+      window.location.reload();
     } catch (error) {
       console.error('Rating failed:', error);
       alert('Failed to submit rating. Please try again.');
     }
   };
 
+  const statRow = (label: string, value: React.ReactNode) => (
+    <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+      <span className="text-fg-subtle text-sm">{label}</span>
+      <span className="font-medium text-fg text-sm">{value}</span>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-gray-100 font-sans pb-20">
+    <div className="min-h-screen bg-bg text-fg pb-20">
       {/* Header */}
-      <header className="bg-[#151519]/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link 
-            href="/"
-            className="inline-flex items-center text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to FlowStore
+      <header className="glass-panel sticky top-0 z-50">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold tracking-tight">
+            <span className="text-primary">flow</span><span className="">store</span><span className="text-fg-subtle font-light">.dev</span>
           </Link>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             {isAuthenticated ? (
-              <>
-                {/* <Link 
-                  href="/upload"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center shadow-lg shadow-blue-900/20"
-                >
-                  <span className="hidden sm:inline">Upload Workflow</span>
-                </Link> */}
-                
-                <div className="flex items-center space-x-3 border-l border-gray-700 pl-4">
-                  <div className="flex flex-col items-end hidden sm:flex">
-                    <span className="text-sm font-medium text-white">{user?.firstName}</span>
-                    <span className="text-xs text-gray-400 capitalize">{user?.subscriptionTier}</span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="p-2 text-gray-400 hover:text-white transition-colors"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
+              <div className="flex items-center gap-3 border-l border-border pl-3">
+                <div className="hidden sm:flex flex-col items-end leading-tight">
+                  <span className="text-sm font-medium">{user?.firstName}</span>
+                  <span className="text-xs text-fg-subtle capitalize">
+                    {user?.subscriptionTier}
+                  </span>
                 </div>
-              </>
+                <button
+                  onClick={logout}
+                  title="Sign out"
+                  className="p-2 text-fg-muted hover:text-fg hover:bg-surface-2 rounded-lg transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
             ) : (
               <Link
                 href="/auth/login"
-                className="px-4 py-2 bg-[#1c1c21] hover:bg-[#25252b] text-white text-sm font-medium rounded-lg border border-gray-700 transition-colors flex items-center"
+                className="px-4 py-2 border border-border bg-surface text-sm font-medium rounded-lg hover:bg-surface-2 transition-colors flex items-center"
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign In
@@ -112,183 +166,196 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="relative bg-[#151519] border-b border-gray-800 pt-12 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl">
-            <div className="flex items-center space-x-3 mb-6">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+      {/* Hero */}
+      <div className="border-b border-border bg-surface">
+        <div className="container mx-auto px-6 pt-12 pb-14">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2 mb-5 text-xs">
+              <span className="px-2.5 py-1 rounded-full font-medium bg-primary-soft text-primary border border-primary/20">
                 {workflow.category}
               </span>
-              <span className="text-gray-600">•</span>
-              <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <span className="px-2.5 py-1 rounded-full font-medium bg-surface-2 text-fg-muted border border-border capitalize">
                 {workflow.complexity}
               </span>
               {workflow.isPremium && (
-                <>
-                  <span className="text-gray-600">•</span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-500 border border-yellow-500/30 flex items-center">
-                    PREMIUM
-                  </span>
-                </>
+                <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                  PREMIUM
+                </span>
               )}
             </div>
-            
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-5 leading-tight">
               {workflow.title}
             </h1>
-            
-            <p className="text-xl text-gray-400 leading-relaxed max-w-2xl">
+            <p className="text-lg text-fg-muted leading-relaxed max-w-2xl">
               {workflow.shortDescription}
             </p>
           </div>
         </div>
       </div>
 
-      <main className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
-          {/* Main Content (Left) */}
-          <div className="lg:col-span-8 space-y-12">
-            
-            {/* Interactive Preview */}
+      <main className="container mx-auto px-6 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Main content */}
+          <div className="lg:col-span-8 space-y-10">
             <section>
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-                <span className="w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-                Workflow Preview
-              </h2>
-              <div className="bg-[#1c1c21] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/5">
-                <div className="h-[300px] bg-[#0f0f11] relative group">
-                  <WorkflowPreview workflow={workflow.workflow || { nodes: [], connections: {} }} />
-                  <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs text-gray-300 border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Interactive Preview
-                  </div>
+              <h2 className="text-lg font-semibold mb-4">Workflow preview</h2>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="h-[320px] bg-surface relative">
+                  {workflow.workflow ? (
+                    <WorkflowPreview
+                      workflow={workflow.workflow || { nodes: [], connections: {} }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-center px-6 gap-2">
+                      <Lock className="w-6 h-6 text-fg-subtle" />
+                      <p className="text-fg-muted text-sm">
+                        The full workflow unlocks with Pro or Lifetime access.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* Setup Steps */}
             {workflow.setupSteps && workflow.setupSteps.length > 0 && (
               <section>
-                <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-                  <span className="w-1 h-6 bg-green-500 rounded-full mr-3"></span>
-                  Setup Guide
-                </h2>
-                <div className="bg-[#1c1c21] border border-gray-800 rounded-2xl p-8">
-                  <div className="space-y-8">
-                    {workflow.setupSteps.map((step, index) => (
-                      <div key={index} className="flex gap-6">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold border border-blue-500/20 shadow-lg shadow-blue-900/10">
-                          {index + 1}
-                        </div>
-                        <div className="pt-1">
-                          <p className="text-gray-300 leading-relaxed text-base">{step}</p>
-                        </div>
+                <h2 className="text-lg font-semibold mb-4">Setup guide</h2>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  {workflow.setupSteps.map((step, index) => (
+                    <div key={index} className="flex gap-4">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-semibold border border-primary/20">
+                        {index + 1}
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-fg-muted leading-relaxed pt-0.5">{step}</p>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}
 
-            {/* Detailed Description (if exists) */}
             {workflow.detailedDescription && (
               <section>
-                <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-                  <span className="w-1 h-6 bg-purple-500 rounded-full mr-3"></span>
-                  Details
-                </h2>
-                <div className="prose prose-invert max-w-none text-gray-400">
-                  <p>{workflow.detailedDescription}</p>
+                <h2 className="text-lg font-semibold mb-4">Details</h2>
+                <div className="bg-card border border-border rounded-2xl p-6 text-fg-muted leading-relaxed whitespace-pre-line">
+                  {workflow.detailedDescription}
                 </div>
               </section>
             )}
           </div>
 
-          {/* Sidebar (Right) */}
-          <div className="lg:col-span-4 space-y-8">
-            
-            {/* Actions Card */}
-            <div className="bg-[#1c1c21] rounded-2xl border border-gray-800 p-6 shadow-xl sticky top-24">
-              <div className="flex flex-col space-y-4 mb-8">
-                <button 
-                  onClick={handleCopy}
-                  className="w-full flex items-center justify-center px-4 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] group"
-                >
-                  {copied ? <Tag className="w-5 h-5 mr-2" /> : <Share2 className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />}
-                  {copied ? 'Copied!' : 'Copy Workflow JSON'}
-                </button>
-                
-                <button 
-                  onClick={handleDownload}
-                  className="w-full flex items-center justify-center px-4 py-4 bg-[#25252b] hover:bg-[#2a2a30] text-gray-200 border border-gray-700 hover:border-gray-600 rounded-xl font-medium transition-all active:scale-[0.98]"
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  Download JSON
-                </button>
+          {/* Sidebar */}
+          <div className="lg:col-span-4">
+            <div className="bg-card border border-border rounded-2xl p-6 sticky top-24">
+              {isPremium && (
+                <div className="mb-5 flex items-center gap-2 text-sm">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                    PREMIUM
+                  </span>
+                  {hasAccess ? (
+                    <span className="text-success">Included in your plan</span>
+                  ) : (
+                    <span className="text-fg-subtle">Pro or Lifetime required</span>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 mb-6">
+                {locked ? (
+                  <Link
+                    href="/coming-soon"
+                    className="w-full flex items-center justify-center px-4 py-3.5 bg-primary hover:bg-primary-hover text-primary-fg rounded-xl font-semibold transition-colors active:scale-[0.99]"
+                  >
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Unlock premium
+                  </Link>
+                ) : (
+                  <>
+                    {workflow.workflow && (
+                      <button
+                        onClick={handleCopy}
+                        className="w-full flex items-center justify-center px-4 py-3.5 bg-primary hover:bg-primary-hover text-primary-fg rounded-xl font-semibold transition-colors active:scale-[0.99] group"
+                      >
+                        {copied ? (
+                          <Tag className="w-5 h-5 mr-2" />
+                        ) : (
+                          <Share2 className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
+                        )}
+                        {copied ? 'Copied!' : 'Copy Workflow JSON'}
+                      </button>
+                    )}
+                    <button
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="w-full flex items-center justify-center px-4 py-3.5 border border-border bg-surface hover:bg-surface-2 text-fg rounded-xl font-medium transition-colors active:scale-[0.99] disabled:opacity-60"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      {downloading ? 'Preparing…' : 'Download JSON'}
+                    </button>
+                  </>
+                )}
               </div>
 
-              <div className="space-y-5">
-                <div className="flex items-center justify-between p-3 bg-[#151519] rounded-xl border border-gray-800/50">
-                  <span className="text-gray-500 text-sm">Rating</span>
-                  <div className="flex flex-col items-end">
-                    <span className="font-bold text-white flex items-center mb-1">
-                      {workflow.ratingAverage || '0.0'} <span className="text-yellow-500 ml-1">★</span>
+              <div className="mb-2">
+                <div className="flex items-center justify-between py-2.5 border-b border-border">
+                  <span className="text-fg-subtle text-sm">Rating</span>
+                  <span className="font-medium text-fg text-sm flex items-center">
+                    {workflow.ratingAverage || '0.0'}
+                    <Star className="w-3.5 h-3.5 ml-1 text-amber-500 fill-current" />
+                    <span className="text-fg-subtle ml-1">
+                      ({workflow.ratingCount || 0})
                     </span>
-                    <span className="text-xs text-gray-500 mb-2">({workflow.ratingCount || 0} ratings)</span>
-                    {isAuthenticated ? (
-                      <RatingInput 
-                        currentRating={0} 
-                        onRate={handleRate} 
-                      />
-                    ) : (
-                      <span className="text-xs text-gray-600">Sign in to rate</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-[#151519] rounded-xl border border-gray-800/50">
-                  <span className="text-gray-500 text-sm">Downloads</span>
-                  <span className="font-bold text-white">{workflow.downloadsCount}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-[#151519] rounded-xl border border-gray-800/50">
-                  <span className="text-gray-500 text-sm">Views</span>
-                  <span className="font-bold text-white">{workflow.viewsCount}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-[#151519] rounded-xl border border-gray-800/50">
-                  <span className="text-gray-500 text-sm">Updated</span>
-                  <span className="font-bold text-white text-sm">
-                    {new Date(workflow.updated).toLocaleDateString()}
                   </span>
                 </div>
+                {statRow('Downloads', workflow.downloadsCount)}
+                {statRow('Views', workflow.viewsCount)}
+                {statRow('Updated', new Date(workflow.updated).toLocaleDateString())}
               </div>
 
-              <div className="mt-8 pt-8 border-t border-gray-800">
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Nodes Used</h3>
+              <div className="mt-4 pt-4 border-t border-border">
+                {isAuthenticated ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-fg-subtle text-sm">Rate this</span>
+                    <RatingInput currentRating={0} onRate={handleRate} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-fg-subtle">Sign in to rate this workflow.</p>
+                )}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-border">
+                <h3 className="text-xs font-semibold text-fg-subtle uppercase tracking-wider mb-3">
+                  Nodes used
+                </h3>
                 <div className="flex flex-wrap gap-2">
-                  {(showAllNodes ? workflow.nodes : workflow.nodes.slice(0, INITIAL_NODE_LIMIT)).map((node) => (
-                    <div 
+                  {(showAllNodes
+                    ? workflow.nodes
+                    : workflow.nodes.slice(0, INITIAL_NODE_LIMIT)
+                  ).map((node) => (
+                    <span
                       key={node}
-                      className="flex items-center space-x-2 px-3 py-1.5 bg-[#151519] border border-gray-800 rounded-lg text-xs text-gray-300 hover:border-gray-700 transition-colors"
+                      className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 bg-surface border border-border rounded-lg text-xs text-fg-muted"
                     >
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
-                      <span>{node}</span>
-                    </div>
+                      <span className="w-4 h-4 flex items-center justify-center">
+                        {getNodeIcon(node, 16)}
+                      </span>
+                      {node}
+                    </span>
                   ))}
                   {workflow.nodes.length > INITIAL_NODE_LIMIT && (
                     <button
                       onClick={() => setShowAllNodes(!showAllNodes)}
-                      className="px-3 py-1.5 bg-[#1c1c21] border border-gray-700 rounded-lg text-xs text-blue-400 hover:text-blue-300 hover:border-blue-500/50 transition-colors"
+                      className="px-2.5 py-1 border border-border rounded-lg text-xs text-primary hover:bg-primary-soft transition-colors"
                     >
-                      {showAllNodes ? 'Show Less' : `+${workflow.nodes.length - INITIAL_NODE_LIMIT} More`}
+                      {showAllNodes
+                        ? 'Show less'
+                        : `+${workflow.nodes.length - INITIAL_NODE_LIMIT} more`}
                     </button>
                   )}
                 </div>
               </div>
             </div>
-
           </div>
-
         </div>
       </main>
     </div>

@@ -7,8 +7,9 @@ export type DownloadDocument = Download & Document;
 
 @Schema({ timestamps: { createdAt: 'downloadedAt', updatedAt: false } })
 export class Download {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  userId: User;
+  // Null for anonymous downloads of free workflows.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false, default: null })
+  userId: User | null;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Workflow', required: true })
   workflowId: Workflow;
