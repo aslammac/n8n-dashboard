@@ -7,24 +7,22 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install all dependencies (needed for build)
+RUN npm install
 
 # Copy source code
 COPY . .
 
-# Install Nest CLI globally to ensure build command works
-RUN npm install -g @nestjs/cli
-
 # Build the application
-RUN npm run build
-RUN ls -la /app
-RUN ls -la /app/dist || echo "dist directory not found"
+RUN npx @nestjs/cli build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Set environment to production
 ENV NODE_ENV=production
 
-# Expose the port
+# Railway injects PORT at runtime — expose it
 EXPOSE 3001
 
 # Start the application
