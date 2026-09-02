@@ -1,40 +1,40 @@
-name: Deploy to Linode
+name: Deploy Backend to Alibaba ECS
 
-# on:
-#   push:
-#     branches:
-#       - main
-#   workflow_dispatch:  # Allow manual triggers
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual triggers
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.LINODE_HOST }}
-          username: ${{ secrets.LINODE_USERNAME }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USERNAME }}
+          key: ${{ secrets.ECS_SSH_KEY }}
           port: 22
           script: |
             set -e  # Exit on error
-            
+
             echo "📂 Navigating to project directory..."
             cd ~/n8n-dashboard
-            
+
             echo "📥 Pulling latest changes..."
             git pull origin main
-            
-            echo "🐳 Rebuilding Docker containers..."
-            docker compose down
-            docker compose up --build -d
-            
+
+            echo "🐳 Rebuilding backend container..."
+            docker compose build backend
+            docker compose up -d --no-deps backend
+
             echo "🧹 Cleaning up unused images..."
             docker image prune -f
-            
-            echo "✅ Deployment complete!"
+
+            echo "✅ Backend deployment complete!"
