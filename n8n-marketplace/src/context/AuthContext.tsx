@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { identify, resetAnalytics, track, EVENTS } from '@/lib/analytics';
 
 interface User {
   _id: string;
@@ -40,6 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const response = await api.get('/users/profile');
           setUser(response.data);
+          if (response.data?._id) {
+            identify(response.data._id, {
+              tier: response.data.subscriptionTier,
+              email_verified: response.data.emailVerified,
+              roles: response.data.roles,
+            });
+          }
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
           Cookies.remove('token');
@@ -61,6 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.get('/users/profile')
       .then(response => {
         setUser(response.data);
+        if (response.data?._id) {
+          identify(response.data._id, {
+            tier: response.data.subscriptionTier,
+            email_verified: response.data.emailVerified,
+            roles: response.data.roles,
+          });
+        }
+        track(EVENTS.loginCompleted, { method: 'session' });
         if (redirectPath) {
           router.push(redirectPath);
         }
@@ -98,7 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!response.data.access_token || !response.data.refresh_token) {
         throw new Error('Registration failed');
       }
-      
+
+      track(EVENTS.signupCompleted, { newsletter, auto_login: autoLogin });
+
       if (autoLogin) {
         const { access_token, refresh_token } = response.data;
         login(access_token, refresh_token);
@@ -111,6 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    track(EVENTS.logout);
+    resetAnalytics();
     Cookies.remove('token');
     Cookies.remove('refreshToken');
     setUser(null);

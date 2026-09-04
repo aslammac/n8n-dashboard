@@ -1,43 +1,37 @@
 "use client";
 
-import { useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import AuthShell from "@/components/auth/AuthShell";
 
 function CallbackContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { login } = useAuth();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const refreshToken = searchParams.get('refreshToken');
-
+    const token = searchParams.get("token");
+    const refreshToken = searchParams.get("refreshToken");
     if (token && refreshToken) {
       login(token, refreshToken);
-    } else {
-      // Only redirect if we've actually checked params and they're missing
-      // This prevents premature redirect during hydration
-      if (typeof window !== 'undefined') {
-         // console.error('Missing tokens in callback URL');
-         // router.push('/auth/login');
-      }
     }
-  }, [searchParams, login, router]);
+  }, [searchParams, login]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Authenticating...</h2>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">Please wait while we log you in.</p>
+    <AuthShell title="Signing you in…">
+      <div className="flex flex-col items-center py-4">
+        <span className="w-10 h-10 border-2 border-border border-t-primary rounded-full animate-spin" />
+        <p className="mt-4 text-sm text-fg-muted">
+          Please wait while we finish authenticating.
+        </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={null}>
       <CallbackContent />
     </Suspense>
   );

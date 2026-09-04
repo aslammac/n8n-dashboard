@@ -1,26 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  Download,
-  Tag,
-  Share2,
-  LogIn,
-  LogOut,
-  Sparkles,
-  Star,
-  Lock,
-} from 'lucide-react';
+import { ChevronRight, Download, Tag, Share2, Sparkles, Star, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { WorkflowMetadata } from '@/types/workflow';
 import WorkflowPreview from '@/components/WorkflowPreview';
+import SiteHeader from '@/components/layout/SiteHeader';
+import SiteFooter from '@/components/layout/SiteFooter';
+import Reveal from '@/components/motion/Reveal';
 import { getNodeIcon } from '@/utils/nodeIcons';
 import api from '@/lib/api';
+import { fetcher } from '@/lib/fetcher';
+import useSWR from 'swr';
 import RatingInput from '@/components/RatingInput';
-import ThemeToggle from '@/components/ThemeToggle';
+import { track, EVENTS } from '@/lib/analytics';
+import { categoryHref } from '@/data/categories';
 
 interface WorkflowDetailsProps {
   workflow: WorkflowMetadata;
@@ -28,9 +23,17 @@ interface WorkflowDetailsProps {
 
 type ApiError = { response?: { status?: number; data?: { message?: string } } };
 
+interface Recommendation {
+  _id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  category: string;
+  isPremium?: boolean;
+}
+
 export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
-  const { user, isAuthenticated, logout } = useAuth();
-  const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showAllNodes, setShowAllNodes] = useState(false);
   const INITIAL_NODE_LIMIT = 5;
@@ -44,15 +47,20 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   const isPremium = !!workflow?.isPremium;
   const locked = isPremium && !hasAccess;
 
-  // Return to the previous list view (keeps its search/filter/page in the URL);
-  // fall back to home when opened directly with no history.
-  const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push('/');
-    }
-  };
+  const { data: related } = useSWR<Recommendation[]>(
+    workflow?.id ? `/workflows/${workflow.id}/recommendations` : null,
+    fetcher,
+  );
+
+  useEffect(() => {
+    track(EVENTS.workflowDetailView, {
+      id: workflow.id,
+      slug: workflow.slug,
+      is_premium: isPremium,
+      locked,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow.id]);
 
   useEffect(() => {
     if (!isPremium || !isAuthenticated || !workflow?.locked) return;
@@ -84,10 +92,22 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      track(EVENTS.downloadClick, {
+        id: workflow.id,
+        slug: workflow.slug,
+        tier: isPremium ? 'premium' : 'free',
+        result: 'ok',
+      });
     } catch (error) {
       console.error('Download failed:', error);
       const status = (error as ApiError)?.response?.status;
       const serverMessage = (error as ApiError)?.response?.data?.message;
+      track(EVENTS.downloadClick, {
+        id: workflow.id,
+        slug: workflow.slug,
+        tier: isPremium ? 'premium' : 'free',
+        result: status === 401 ? 'denied' : status === 403 ? 'capped' : 'error',
+      });
       if (status === 401) {
         alert(serverMessage || 'Please sign in to download this workflow.');
       } else if (status === 403) {
@@ -127,48 +147,27 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   );
 
   return (
-    <div className="min-h-screen bg-bg text-fg pb-20">
-      {/* Header */}
-      <header className="glass-panel sticky top-0 z-50">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            <span className="text-primary">flow</span><span className="">store</span><span className="text-fg-subtle font-light">.dev</span>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3 border-l border-border pl-3">
-                <div className="hidden sm:flex flex-col items-end leading-tight">
-                  <span className="text-sm font-medium">{user?.firstName}</span>
-                  <span className="text-xs text-fg-subtle capitalize">
-                    {user?.subscriptionTier}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  title="Sign out"
-                  className="p-2 text-fg-muted hover:text-fg hover:bg-surface-2 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="px-4 py-2 border border-border bg-surface text-sm font-medium rounded-lg hover:bg-surface-2 transition-colors flex items-center"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Sign In
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-bg text-fg">
+      <SiteHeader />
 
       {/* Hero */}
-      <div className="border-b border-border bg-surface">
-        <div className="container mx-auto px-6 pt-12 pb-14">
+      <div className="border-b border-border grid-backdrop">
+        <div className="container mx-auto px-6 pt-10 pb-14">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1.5 text-sm text-fg-subtle mb-6 flex-wrap"
+          >
+            <Link href="/" className="hover:text-fg transition-colors">Home</Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <Link href="/workflows" className="hover:text-fg transition-colors">Workflows</Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <Link href={categoryHref(workflow.category)} className="hover:text-fg transition-colors">
+              {workflow.category}
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-fg-muted truncate max-w-[16rem]">{workflow.title}</span>
+          </nav>
+
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 mb-5 text-xs">
               <span className="px-2.5 py-1 rounded-full font-medium bg-primary-soft text-primary border border-primary/20">
@@ -177,7 +176,7 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
               <span className="px-2.5 py-1 rounded-full font-medium bg-surface-2 text-fg-muted border border-border capitalize">
                 {workflow.complexity}
               </span>
-              {workflow.isPremium && (
+              {isPremium && (
                 <span className="px-2.5 py-1 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
                   PREMIUM
                 </span>
@@ -194,11 +193,11 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
         </div>
       </div>
 
-      <main className="container mx-auto px-6 py-10">
+      <main className="container mx-auto px-6 py-10 flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Main content */}
           <div className="lg:col-span-8 space-y-10">
-            <section>
+            <Reveal>
               <h2 className="text-lg font-semibold mb-4">Workflow preview</h2>
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <div className="h-[320px] bg-surface relative">
@@ -216,10 +215,10 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
                   )}
                 </div>
               </div>
-            </section>
+            </Reveal>
 
             {workflow.setupSteps && workflow.setupSteps.length > 0 && (
-              <section>
+              <Reveal>
                 <h2 className="text-lg font-semibold mb-4">Setup guide</h2>
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
                   {workflow.setupSteps.map((step, index) => (
@@ -231,16 +230,16 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
                     </div>
                   ))}
                 </div>
-              </section>
+              </Reveal>
             )}
 
             {workflow.detailedDescription && (
-              <section>
+              <Reveal>
                 <h2 className="text-lg font-semibold mb-4">Details</h2>
                 <div className="bg-card border border-border rounded-2xl p-6 text-fg-muted leading-relaxed whitespace-pre-line">
                   {workflow.detailedDescription}
                 </div>
-              </section>
+              </Reveal>
             )}
           </div>
 
@@ -357,7 +356,41 @@ export default function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
             </div>
           </div>
         </div>
+
+        {related && related.length > 0 && (
+          <Reveal className="mt-16">
+            <h2 className="text-lg font-semibold mb-6">Related workflows</h2>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {related.slice(0, 6).map((rec) => (
+                <Link
+                  key={rec._id}
+                  href={`/workflow/${rec.slug}`}
+                  className="group rounded-2xl border border-border bg-card p-5 hover:border-primary/40 transition-colors flex flex-col"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary-soft text-primary border border-primary/20">
+                      {rec.category}
+                    </span>
+                    {rec.isPremium && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                        PREMIUM
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-semibold mb-1.5 line-clamp-1 group-hover:text-primary transition-colors">
+                    {rec.title}
+                  </h3>
+                  <p className="text-sm text-fg-muted line-clamp-2 leading-relaxed">
+                    {rec.shortDescription}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
+        )}
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

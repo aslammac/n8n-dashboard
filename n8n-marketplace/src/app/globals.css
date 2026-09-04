@@ -4,47 +4,47 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: #ffffff;
-  --surface: #f6f7f9;
-  --surface-2: #eceef2;
+  --bg: #fbfdfc;
+  --surface: #f1f6f4;
+  --surface-2: #e6eeeb;
   --card: #ffffff;
-  --border: #e3e6eb;
-  --border-strong: #d3d8e0;
-  --fg: #0f1115;
-  --fg-muted: #566072;
-  --fg-subtle: #8b95a5;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
+  --border: #e1e9e5;
+  --border-strong: #cedad4;
+  --fg: #0b1512;
+  --fg-muted: #4b5a54;
+  --fg-subtle: #8a9c95;
+  --primary: #10b981;
+  --primary-hover: #059669;
   --primary-fg: #ffffff;
-  --primary-soft: rgba(79, 70, 229, 0.1);
-  --ring: rgba(79, 70, 229, 0.35);
-  --success: #16a34a;
+  --primary-soft: rgba(16, 185, 129, 0.12);
+  --ring: rgba(16, 185, 129, 0.38);
+  --success: #0f9d58;
   --warning: #b45309;
   --danger: #dc2626;
-  --grad-from: #6366f1;
-  --grad-to: #ec4899;
+  --grad-from: #10b981;
+  --grad-to: #3ddc97;
 }
 
 .dark {
-  --bg: #0a0b0e;
-  --surface: #121419;
-  --surface-2: #1a1d23;
-  --card: #131519;
-  --border: #262a31;
-  --border-strong: #333842;
-  --fg: #f2f4f7;
-  --fg-muted: #9aa4b2;
-  --fg-subtle: #6b7480;
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
-  --primary-fg: #ffffff;
-  --primary-soft: rgba(99, 102, 241, 0.14);
-  --ring: rgba(99, 102, 241, 0.45);
+  --bg: #07100d;
+  --surface: #0d1814;
+  --surface-2: #13211c;
+  --card: #0e1a15;
+  --border: #1e2e28;
+  --border-strong: #2a3d36;
+  --fg: #eaf4f0;
+  --fg-muted: #9db2ab;
+  --fg-subtle: #657c74;
+  --primary: #2dd4a7;
+  --primary-hover: #5eeac4;
+  --primary-fg: #04120d;
+  --primary-soft: rgba(45, 212, 167, 0.16);
+  --ring: rgba(45, 212, 167, 0.45);
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --grad-from: #818cf8;
-  --grad-to: #f472b6;
+  --grad-from: #2dd4a7;
+  --grad-to: #7df0ce;
 }
 
 /* Expose the tokens as Tailwind color utilities: bg-bg, text-fg, border-border … */
@@ -64,6 +64,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 html {
@@ -81,11 +84,39 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* ---- Layout rhythm ---------------------------------------------------------- */
+
+.section {
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- Brand bits ----------------------------------------------------------- */
+
 .text-gradient {
   background: linear-gradient(120deg, var(--grad-from), var(--grad-to));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.grid-backdrop {
+  background-image:
+    radial-gradient(600px circle at 15% -10%, var(--primary-soft), transparent 60%),
+    radial-gradient(520px circle at 92% 8%, color-mix(in srgb, var(--grad-to) 14%, transparent), transparent 60%);
+}
+
+/* Faint engineering-grid overlay for gradient cards (see WorkflowCard). */
+.card-grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+  background-size: 34px 34px;
+  background-position: -1px -1px;
 }
 
 .glass-panel {
@@ -113,4 +144,21 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 4px;
+}
+
+/* ---- Motion safety ------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .glass-card:hover {
+    transform: none;
+  }
 }

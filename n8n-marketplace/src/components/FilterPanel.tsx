@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WorkflowMetadata } from '@/types/workflow';
 import { ChevronDown, Check, ArrowUpDown } from 'lucide-react';
+import { CATEGORY_LABELS as CATEGORIES } from '@/data/categories';
 
 interface FilterState {
   category: string;
@@ -16,20 +17,6 @@ interface FilterPanelProps {
   onFilterChange: (filters: FilterState) => void;
   className?: string;
 }
-
-const CATEGORIES = [
-  'AI & ML',
-  'Marketing',
-  'Sales',
-  'Data Processing',
-  'Productivity',
-  'Integration',
-  'Communication',
-  'E-commerce',
-  'Finance',
-  'HR',
-  'Other',
-];
 
 const SEGMENT_BASE =
   'px-3 py-1.5 rounded-md text-xs font-medium transition-colors';

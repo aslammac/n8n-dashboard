@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Define paths that don't require authentication
-  const publicPaths = ['/', '/workflow', '/plans', '/coming-soon'];
+  const publicPaths = ['/', '/workflow', '/workflows', '/plans', '/coming-soon'];
   const authPaths = ['/auth/login', '/auth/register', '/auth/callback', '/auth/verify'];
   
   // Check if the current path is public
@@ -17,12 +17,20 @@ export function middleware(request: NextRequest) {
 
   const isAuthPath = authPaths.some(path => pathname.startsWith(path));
 
-  // Exclude static assets and Next.js internals
+  // Exclude Next.js internals, the PostHog analytics proxy, crawler/SEO files,
+  // OG images, and static assets — none of these should ever bounce to login.
   if (
-    pathname.startsWith('/_next') || 
-    pathname.startsWith('/static') || 
-    pathname.startsWith('/favicon.ico') ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg)$/)
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.startsWith('/ingest') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/llms.txt' ||
+    pathname.includes('opengraph-image') ||
+    pathname.includes('twitter-image') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico|txt|xml|json|woff2?)$/)
   ) {
     return NextResponse.next();
   }

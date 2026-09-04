@@ -58,24 +58,37 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!workflow) {
     return {
       title: 'Workflow Not Found | FlowStore',
-      description: 'The requested workflow could not be found.',
+      description: 'The requested n8n workflow could not be found. Browse our library of automation templates.',
     };
   }
+
+  const title = `${workflow.title} — n8n Workflow Template`;
+  const description = `${workflow.shortDescription} Download this n8n automation workflow on FlowStore. Preview on an interactive canvas and import into n8n in one click.`;
+  const keywords = [
+    "n8n workflow", "n8n template", "n8n automation",
+    ...(workflow.tags || []),
+    workflow.category ? `${workflow.category} automation` : "",
+    `${workflow.title} n8n`,
+  ].filter(Boolean);
   
   return {
-    title: `${workflow.title} | FlowStore`,
-    description: workflow.shortDescription,
+    title,
+    description,
+    keywords,
+    alternates: { canonical: `/workflow/${workflow.slug}` },
     openGraph: {
-      title: `${workflow.title} | FlowStore`,
-      description: workflow.shortDescription,
+      title,
+      description,
       type: 'article',
       tags: workflow.tags,
+      siteName: 'FlowStore',
     },
     twitter: {
       card: 'summary_large_image',
-      title: workflow.title,
+      title,
       description: workflow.shortDescription,
-    }
+      creator: '@aslam_mac',
+    },
   };
 }
 
@@ -85,40 +98,73 @@ export default async function WorkflowPage({ params }: PageProps) {
 
   if (!workflow) {
     return (
-      <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center p-4">
-        <h2 className="text-2xl font-bold text-white mb-4">Workflow not found</h2>
-        <a href="/" className="text-blue-500 hover:text-blue-400 font-medium">
-          Return to Marketplace
+      <div className="min-h-screen bg-bg text-fg flex flex-col items-center justify-center p-4">
+        <h2 className="text-2xl font-bold mb-4">Workflow not found</h2>
+        <a href="/workflows" className="text-primary hover:text-primary-hover font-medium">
+          Back to workflows
         </a>
       </div>
     );
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const canonical = `${appUrl}/workflow/${workflow.slug}`;
+  const hasRatings = !!workflow.ratingCount && workflow.ratingCount > 0;
+
   // Add JSON-LD Structured Data
-  const jsonLd = {
+  const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: workflow.title,
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'n8n',
+    url: canonical,
+    description: workflow.shortDescription,
     offers: {
       '@type': 'Offer',
-      price: workflow.isPremium ? 'Premium' : '0',
-      priceCurrency: 'USD',
+      price: workflow.isPremium ? Number(workflow.price ?? 0) : 0,
+      priceCurrency: workflow.currency || 'USD',
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: workflow.ratingAverage,
-      reviewCount: workflow.ratingCount,
-    },
-    description: workflow.shortDescription,
+    ...(hasRatings && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: workflow.ratingAverage,
+        reviewCount: workflow.ratingCount,
+      },
+    }),
   };
+
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: appUrl },
+      { '@type': 'ListItem', position: 2, name: 'Workflows', item: `${appUrl}/workflows` },
+      { '@type': 'ListItem', position: 3, name: workflow.title, item: canonical },
+    ],
+  };
+
+  const howTo =
+    workflow.setupSteps && workflow.setupSteps.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: `Set up: ${workflow.title}`,
+          step: workflow.setupSteps.map((text, i) => ({
+            '@type': 'HowToStep',
+            position: i + 1,
+            text,
+          })),
+        }
+      : null;
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([jsonLd, breadcrumb, ...(howTo ? [howTo] : [])]),
+        }}
       />
       <WorkflowDetails workflow={workflow} />
     </>

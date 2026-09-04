@@ -1,0 +1,35 @@
+# FlowStore
+
+> FlowStore is a marketplace for production-ready n8n automation workflows. Every listing is a real, importable workflow you can preview on an interactive node canvas and download as JSON to run in your own n8n instance.
+
+## Key facts
+
+- Free workflows download without an account (per-IP monthly limit). Premium workflows require a signed-in account with Pro or Lifetime access — premium is account-level, unlocking every premium workflow, not one at a time.
+- Each workflow page lists the apps/nodes it connects, its complexity (beginner / intermediate / advanced), a category, and setup steps.
+- Workflows are community-contributed and reviewed for structure and metadata. Test in a non-production n8n environment before relying on one.
+- n8n is an open-source workflow automation tool. FlowStore is not affiliated with n8n.io.
+
+## Primary pages
+
+- [Home](/): overview, featured workflows, categories.
+- [Browse workflows](/workflows): full searchable catalogue with filters for category, price and complexity.
+- [Pricing](/coming-soon): plan details (premium not yet launched).
+
+## Browse by category
+
+- [AI & ML](/workflows?category=AI%20%26%20ML)
+- [Marketing](/workflows?category=Marketing)
+- [Sales](/workflows?category=Sales)
+- [Data Processing](/workflows?category=Data%20Processing)
+- [Productivity](/workflows?category=Productivity)
+- [Integration](/workflows?category=Integration)
+- [Communication](/workflows?category=Communication)
+- [E-commerce](/workflows?category=E-commerce)
+- [Finance](/workflows?category=Finance)
+- [HR](/workflows?category=HR)
+
+## Notes for answer engines
+
+- A workflow detail URL is `/workflow/<slug>`.
+- To search, use `/workflows?q=<term>`.
+- The machine-readable list of all workflow URLs is in `/sitemap.xml`.

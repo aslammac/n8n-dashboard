@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { track, EVENTS } from '@/lib/analytics';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
@@ -26,6 +27,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status = error.response?.status;
+    if (status && status >= 400) {
+      track(EVENTS.apiError, {
+        path: error.config?.url ?? 'unknown',
+        method: (error.config?.method ?? 'get').toUpperCase(),
+        status,
+      });
+    }
     if (error.response?.status === 401) {
       // Clear token and redirect to login if unauthorized
       // Cookies.remove('token');

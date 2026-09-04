@@ -8,6 +8,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Get('public-stats')
+  async getPublicStats() {
+    return this.analyticsService.getPublicStats();
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get()

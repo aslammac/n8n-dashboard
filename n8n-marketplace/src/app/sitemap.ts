@@ -24,10 +24,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const workflows = await getWorkflows();
 
   const workflowUrls = workflows.map((workflow: any) => ({
-    url: `${baseUrl}/workflow/${workflow._id}`, // Or slug if using slugs
+    // Prefer slug for SEO-friendly URLs; fall back to _id
+    url: `${baseUrl}/workflow/${workflow.slug || workflow._id}`,
     lastModified: new Date(workflow.updatedAt),
     changeFrequency: 'weekly' as const,
-    priority: 0.8,
+    priority: 0.85,
   }));
 
   return [
@@ -36,6 +37,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
+    },
+    {
+      url: `${baseUrl}/workflows`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/coming-soon`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.3,
     },
     ...workflowUrls,
   ];

@@ -11,7 +11,7 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
     <button
       onClick={toggle}
       aria-label="Toggle color theme"
-      className={`p-2 rounded-lg  border-border bg-surface text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors ${className}`}
+      className={`p-2 rounded-lg  text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors ${className}`}
     >
       {mounted && theme === 'dark' ? (
         <Sun className="w-5 h-5" />

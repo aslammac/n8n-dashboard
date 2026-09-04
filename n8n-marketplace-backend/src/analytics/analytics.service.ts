@@ -11,6 +11,27 @@ export class AnalyticsService {
     @InjectModel(Workflow.name) private workflowModel: Model<WorkflowDocument>,
   ) {}
 
+  /** Unauthenticated marketplace totals for the public landing page. */
+  async getPublicStats() {
+    const publicFilter = { status: 'published', isPublic: true };
+    const [totalWorkflows, totalDownloads, nodeTypes] = await Promise.all([
+      this.workflowModel.countDocuments(publicFilter),
+      this.workflowModel
+        .aggregate([
+          { $match: publicFilter },
+          { $group: { _id: null, total: { $sum: '$downloadsCount' } } },
+        ])
+        .then((res) => res[0]?.total || 0),
+      this.workflowModel.distinct('nodes', publicFilter),
+    ]);
+
+    return {
+      totalWorkflows,
+      totalDownloads,
+      totalIntegrations: Array.isArray(nodeTypes) ? nodeTypes.length : 0,
+    };
+  }
+
   async getDashboardStats() {
     const [totalUsers, totalWorkflows, recentUsers, totalDownloads, activeUsers] = await Promise.all([
       this.userModel.countDocuments(),
